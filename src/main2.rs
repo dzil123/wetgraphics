@@ -1,9 +1,10 @@
-use std::iter;
+use std::{iter, marker::PhantomData};
 
+use imgui::DrawData;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
-    window::{Window, WindowBuilder},
+    window::{Window as _, WindowBuilder},
 };
 
 struct State {
@@ -17,7 +18,7 @@ struct State {
 }
 
 impl State {
-    async fn new(window: &Window) -> Self {
+    async fn new(window: &winit::window::Window) -> Self {
         let size = window.inner_size();
 
         let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
@@ -26,6 +27,7 @@ impl State {
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
+                ..Default::default()
             })
             .await
             .unwrap();
@@ -123,15 +125,10 @@ impl State {
     fn render(&mut self) -> Result<(), wgpu::SwapChainError> {
         let frame = self.swap_chain.get_current_frame()?.output;
 
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
-            });
+        let mut encoder = self.device.create_command_encoder(&Default::default());
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: &frame.view,
                     resolve_target: None,
@@ -145,7 +142,7 @@ impl State {
                         store: true,
                     },
                 }],
-                depth_stencil_attachment: None,
+                ..Default::default()
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
@@ -158,8 +155,189 @@ impl State {
     }
 }
 
+type Event<'a> = winit::event::Event<'a, ()>;
+
+struct Window {
+    event_loop: winit::event_loop::EventLoop<()>,
+    window: winit::window::Window,
+}
+
+impl Window {
+    fn new() -> Self {
+        let event_loop = EventLoop::new();
+        let window = WindowBuilder::new().build(&event_loop).unwrap();
+
+        Self { event_loop, window }
+    }
+
+    fn create_surface(&self, instance: wgpu::Instance) -> wgpu::Surface {
+        // SAFETY: this is always safe for a valid winit::Window
+        unsafe { instance.create_surface(&self.window) }
+    }
+
+    fn run<T>(self, mut mainloop: T) -> !
+    where
+        T: Mainloop + 'static,
+    {
+        let Self { event_loop, window } = self;
+
+        event_loop.run(move |event: Event, _, control_flow| {
+            mainloop.event(&event);
+
+            match event {
+                Event::RedrawRequested(_) => {
+                    mainloop.render();
+                }
+                Event::MainEventsCleared => {
+                    window.request_redraw();
+                }
+                Event::WindowEvent { event, window_id } if window_id == window.id() => {
+                    match event {
+                        WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                        WindowEvent::KeyboardInput {
+                            input:
+                                KeyboardInput {
+                                    virtual_keycode: Some(key),
+                                    state: ElementState::Pressed,
+                                    ..
+                                },
+                            ..
+                        } if !mainloop.ignore_keyboard() => match key {
+                            VirtualKeyCode::Escape | VirtualKeyCode::Q => {
+                                *control_flow = ControlFlow::Exit
+                            }
+                            _ => {}
+                        },
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+        })
+    }
+}
+
+trait Mainloop {
+    fn event(&mut self, _event: &Event) {}
+    fn input(&mut self, _event: &WindowEvent) {}
+    fn render(&mut self) {}
+
+    fn ignore_keyboard(&self) -> bool {
+        false
+    }
+
+    fn ignore_mouse(&self) -> bool {
+        false
+    }
+}
+
+// Imgui for winit
+struct Imgui<'a> {
+    context: imgui::Context,
+    platform: imgui_winit_support::WinitPlatform,
+    window: &'a winit::window::Window,
+}
+
+#[must_use = "foo"]
+struct ImguiFrame<'a, 'ui> {
+    ui: imgui::Ui<'ui>,
+    imgui: &'a mut Imgui<'a>,
+    // window: &'a winit::window::Window,
+    // platform: &'a mut imgui_winit_support::WinitPlatform,
+}
+
+// impl<'a, 'ui> ImguiFrame<'a, 'ui> {
+//     fn render2(self) -> &'ui imgui::DrawData {
+//         // let ImguiFrame(ui) = frame;
+//         let ui = None.unwrap();
+//         self.platform.prepare_render(&ui, self.window);
+//         // let draw_data = ui.render();
+//         ui.render()
+//     }
+// }
+
+impl<'a> Imgui<'a> {
+    fn new(window: &'a winit::window::Window) -> Self {
+        use imgui::{FontConfig, FontSource};
+        use imgui_winit_support::{HiDpiMode, WinitPlatform};
+
+        let mut context = imgui::Context::create();
+        context.set_ini_filename(None);
+
+        let mut platform = WinitPlatform::init(&mut context);
+        platform.attach_window(context.io_mut(), &window, HiDpiMode::Rounded);
+
+        let hidpi_factor = platform.hidpi_factor();
+        let font_size = (13.0 * hidpi_factor) as f32;
+        context.fonts().add_font(&[FontSource::DefaultFontData {
+            config: Some(FontConfig {
+                size_pixels: font_size,
+                ..Default::default()
+            }),
+        }]);
+
+        context.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+
+        Self {
+            context,
+            platform,
+            window,
+        }
+    }
+
+    fn event(&mut self, event: &Event) {
+        self.platform
+            .handle_event(self.context.io_mut(), self.window, event)
+    }
+
+    fn render(&'a mut self) -> ImguiFrame<'a, '_> {
+        self.platform
+            .prepare_frame(self.context.io_mut(), self.window)
+            .unwrap();
+        let ui = self.context.frame();
+        ImguiFrame { ui, imgui: self }
+        // ImguiFrame {
+        //     ui,
+        //     window: self.window,
+        //     platform: &mut self.platform,
+        // }
+    }
+
+    fn render2(&mut self, frame: ImguiFrame) {
+        // let ImguiFrame(ui) = frame;
+        let ui = None.unwrap();
+        self.platform.prepare_render(&ui, self.window);
+        let draw_data = ui.render();
+    }
+}
+
+fn foo() {
+    let mut x: Imgui = None.unwrap();
+    let frame = x.render();
+
+    {
+        // let ref ui = frame.0;
+        let ui: imgui::Ui<'_> = None.unwrap();
+        ui.text("foobar");
+    }
+
+    x.render2(frame);
+}
+
+struct ImguiMainloop<'a> {
+    imgui: Imgui<'a>,
+}
+
+impl<'a> Mainloop for ImguiMainloop<'a> {
+    fn event(&mut self, event: &Event) {
+        self.imgui.event(event)
+    }
+}
+
 pub fn main() {
-    env_logger::init();
+    foo();
+    wgpu_subscriber::initialize_default_subscriber(None);
+
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
