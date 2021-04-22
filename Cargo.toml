@@ -1,0 +1,22 @@
+[package]
+name = "wetgraphics"
+version = "0.1.0"
+authors = ["dzil123 <5725958+dzil123@users.noreply.github.com>"]
+edition = "2018"
+
+[dependencies]
+image = "0.23.14"
+winit = "0.24.0"
+shaderc = "0.7.2"
+cgmath = "0.18.0"
+env_logger = "0.8.3"
+log = "0.4.14"
+wgpu = "0.7.1"
+futures = "0.3.14"
+glob = "0.3"
+fs_extra = "1.2"
+anyhow = "1.0"
+wgpu-subscriber = "0.1.0"
+
+[features]
+shader_compile = []
