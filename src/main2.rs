@@ -7,6 +7,8 @@ use winit::{
     window::{Window as _, WindowBuilder},
 };
 
+use pollster::FutureExt as _;
+
 struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -17,8 +19,26 @@ struct State {
     render_pipeline: wgpu::RenderPipeline,
 }
 
+// simple render pass that only clears the frame to black. ignore if using depth buffer, not clearing frame, or anything more complex
+fn begin_render_pass<'a>(
+    encoder: &'a mut wgpu::CommandEncoder,
+    texture: &'a wgpu::TextureView,
+) -> wgpu::RenderPass<'a> {
+    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+            attachment: texture,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                ..Default::default()
+            },
+        }],
+        ..Default::default()
+    })
+}
+
 impl State {
-    async fn new(window: &winit::window::Window) -> Self {
+    fn new(window: &winit::window::Window) -> Self {
         let size = window.inner_size();
 
         let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
@@ -29,19 +49,21 @@ impl State {
                 compatible_surface: Some(&surface),
                 ..Default::default()
             })
-            .await
+            .block_on()
             .unwrap();
 
+        let pushconst_device = wgpu::DeviceDescriptor {
+            features: wgpu::Features::PUSH_CONSTANTS,
+            limits: wgpu::Limits {
+                max_push_constant_size: 128, // i have it on good authority that this is the max for a rx 580 and igpu
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: None,
-                    features: wgpu::Features::empty(),
-                    limits: wgpu::Limits::default(),
-                },
-                None, // Trace path
-            )
-            .await
+            .request_device(&pushconst_device, None)
+            .block_on()
             .unwrap();
 
         let sc_desc = wgpu::SwapChainDescriptor {
@@ -56,16 +78,9 @@ impl State {
         let vs_module = device.create_shader_module(&wgpu::include_spirv!("shader.vert.spv"));
         let fs_module = device.create_shader_module(&wgpu::include_spirv!("shader.frag.spv"));
 
-        let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[],
-                push_constant_ranges: &[],
-            });
-
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
-            layout: Some(&render_pipeline_layout),
+            label: None,
+            layout: Some(&device.create_pipeline_layout(&Default::default())),
             vertex: wgpu::VertexState {
                 module: &vs_module,
                 entry_point: "main",
@@ -82,19 +97,11 @@ impl State {
                 }],
             }),
             primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
                 cull_mode: wgpu::CullMode::Back,
-                // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
-                polygon_mode: wgpu::PolygonMode::Fill,
+                ..Default::default()
             },
             depth_stencil: None,
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
+            multisample: Default::default(),
         });
 
         Self {
@@ -128,22 +135,8 @@ impl State {
         let mut encoder = self.device.create_command_encoder(&Default::default());
 
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                    attachment: &frame.view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
-                        }),
-                        store: true,
-                    },
-                }],
-                ..Default::default()
-            });
+            let mut render_pass = begin_render_pass(&mut encoder, &frame.view);
+            // TODO make this into a closure that only takes in render_pass
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.draw(0..3, 0..1);
@@ -231,30 +224,31 @@ trait Mainloop {
     }
 }
 
+enum ImguiStatus {
+    Enabled(imgui::Context),
+    Suspended(imgui::SuspendedContext),
+}
+
 // Imgui for winit
 struct Imgui<'a> {
-    context: imgui::Context,
+    context: ImguiStatus,
     platform: imgui_winit_support::WinitPlatform,
     window: &'a winit::window::Window,
 }
 
-#[must_use = "foo"]
+#[must_use]
 struct ImguiFrame<'a, 'ui> {
     ui: imgui::Ui<'ui>,
-    imgui: &'a mut Imgui<'a>,
-    // window: &'a winit::window::Window,
-    // platform: &'a mut imgui_winit_support::WinitPlatform,
+    platform: &'a mut imgui_winit_support::WinitPlatform,
+    window: &'a winit::window::Window,
 }
 
-// impl<'a, 'ui> ImguiFrame<'a, 'ui> {
-//     fn render2(self) -> &'ui imgui::DrawData {
-//         // let ImguiFrame(ui) = frame;
-//         let ui = None.unwrap();
-//         self.platform.prepare_render(&ui, self.window);
-//         // let draw_data = ui.render();
-//         ui.render()
-//     }
-// }
+impl<'a, 'ui> ImguiFrame<'a, 'ui> {
+    fn render(self) -> &'ui imgui::DrawData {
+        self.platform.prepare_render(&self.ui, self.window);
+        self.ui.render()
+    }
+}
 
 impl<'a> Imgui<'a> {
     fn new(window: &'a winit::window::Window) -> Self {
@@ -279,49 +273,65 @@ impl<'a> Imgui<'a> {
         context.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 
         Self {
-            context,
+            context: ImguiStatus::Enabled(context),
             platform,
             window,
         }
     }
 
+    fn context<T, U>(&mut self, f: T) -> Option<U>
+    where
+        T: FnMut(&mut imgui::Context) -> U,
+    {
+        if let ImguiStatus::Enabled(context) = &mut self.context {
+            Some(f(context))
+        } else {
+            None
+        }
+    }
+
     fn event(&mut self, event: &Event) {
-        self.platform
-            .handle_event(self.context.io_mut(), self.window, event)
+        self.context(|context| {
+            self.platform
+                .handle_event(context.io_mut(), self.window, event)
+        });
     }
 
-    fn render(&'a mut self) -> ImguiFrame<'a, '_> {
-        self.platform
-            .prepare_frame(self.context.io_mut(), self.window)
-            .unwrap();
-        let ui = self.context.frame();
-        ImguiFrame { ui, imgui: self }
-        // ImguiFrame {
-        //     ui,
-        //     window: self.window,
-        //     platform: &mut self.platform,
-        // }
-    }
+    fn render(&mut self) -> Option<ImguiFrame> {
+        // self.context(|context| {
+        //     self.platform
+        //         .prepare_frame(context.io_mut(), self.window)
+        //         .unwrap();
 
-    fn render2(&mut self, frame: ImguiFrame) {
-        // let ImguiFrame(ui) = frame;
-        let ui = None.unwrap();
-        self.platform.prepare_render(&ui, self.window);
-        let draw_data = ui.render();
+        //     ImguiFrame {
+        //         ui: context.frame(),
+        //         window: self.window,
+        //         platform: &mut self.platform,
+        //     }
+        // })
+
+        self.context(move |context| {
+            self.platform
+                .prepare_frame(context.io_mut(), self.window)
+                .unwrap();
+            context.frame()
+        })
+        .map(move |ui| ImguiFrame {
+            ui,
+            window: self.window,
+            platform: &mut self.platform,
+        })
     }
 }
 
 fn foo() {
     let mut x: Imgui = None.unwrap();
-    let frame = x.render();
+    let frame = x.render().unwrap();
 
-    {
-        // let ref ui = frame.0;
-        let ui: imgui::Ui<'_> = None.unwrap();
-        ui.text("foobar");
-    }
+    let ui = &frame.ui;
+    ui.text("foobar");
 
-    x.render2(frame);
+    frame.render();
 }
 
 struct ImguiMainloop<'a> {
@@ -335,16 +345,14 @@ impl<'a> Mainloop for ImguiMainloop<'a> {
 }
 
 pub fn main() {
-    foo();
-    wgpu_subscriber::initialize_default_subscriber(None);
+    // foo();
+    // wgpu_subscriber::initialize_default_subscriber(None);
+    env_logger::init();
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
-    use futures::executor::block_on;
-
-    // Since main can't be async, we're going to need to block
-    let mut state = block_on(State::new(&window));
+    let mut state = State::new(&window);
 
     event_loop.run(move |event, _, control_flow| {
         match event {
