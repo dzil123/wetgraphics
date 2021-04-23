@@ -9,16 +9,6 @@ use winit::{
 
 use pollster::FutureExt as _;
 
-struct State {
-    surface: wgpu::Surface,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    sc_desc: wgpu::SwapChainDescriptor,
-    swap_chain: wgpu::SwapChain,
-    size: winit::dpi::PhysicalSize<u32>,
-    render_pipeline: wgpu::RenderPipeline,
-}
-
 // simple render pass that only clears the frame to black. ignore if using depth buffer, not clearing frame, or anything more complex
 fn begin_render_pass<'a>(
     encoder: &'a mut wgpu::CommandEncoder,
@@ -35,133 +25,6 @@ fn begin_render_pass<'a>(
         }],
         ..Default::default()
     })
-}
-
-impl State {
-    fn new(window: &winit::window::Window) -> Self {
-        let size = window.inner_size();
-
-        let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
-        let surface = unsafe { instance.create_surface(window) };
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            })
-            .block_on()
-            .unwrap();
-
-        let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::PUSH_CONSTANTS,
-                    limits: wgpu::Limits {
-                        max_push_constant_size: 128, // i have it on good authority that this is the max for a rx 580 and igpu
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-                None,
-            )
-            .block_on()
-            .unwrap();
-
-        // dbg!(device.features(), device.limits());
-        dbg!(adapter.get_swap_chain_preferred_format(&surface));
-
-        let sc_desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8Unorm,
-            width: size.width,
-            height: size.height,
-            present_mode: wgpu::PresentMode::Fifo,
-        };
-        let swap_chain = device.create_swap_chain(&surface, &sc_desc);
-
-        let vs_module = crate::shaders::load(&device, "shader.vert");
-        let fs_module = crate::shaders::load(&device, "shader.frag");
-
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: None,
-            layout: Some(
-                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Default::default(),
-                    bind_group_layouts: Default::default(),
-                    push_constant_ranges: Default::default(),
-                }),
-            ),
-            vertex: wgpu::VertexState {
-                module: &vs_module,
-                entry_point: "main",
-                buffers: &[],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &fs_module,
-                entry_point: "main",
-                targets: &[wgpu::ColorTargetState {
-                    format: sc_desc.format,
-                    alpha_blend: wgpu::BlendState::REPLACE,
-                    color_blend: wgpu::BlendState::REPLACE,
-                    write_mask: wgpu::ColorWrite::ALL,
-                }],
-            }),
-            primitive: wgpu::PrimitiveState {
-                cull_mode: wgpu::CullMode::Back,
-                ..Default::default()
-            },
-            depth_stencil: None,
-            multisample: Default::default(),
-        });
-
-        Self {
-            surface,
-            device,
-            queue,
-            size,
-            sc_desc,
-            swap_chain,
-            render_pipeline,
-        }
-    }
-
-    fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        // println!("resize");
-        self.size = new_size;
-        self.sc_desc.width = new_size.width;
-        self.sc_desc.height = new_size.height;
-        self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
-    }
-
-    #[allow(unused_variables)]
-    fn input(&mut self, event: &WindowEvent) -> bool {
-        false
-    }
-
-    fn update(&mut self) {}
-
-    fn render(&mut self) -> Result<(), wgpu::SwapChainError> {
-        // let texture = self.swap_chain.get_current_frame()?;
-        // if texture.suboptimal {
-        //     println!("suboptimal");
-        // }
-        // let frame = texture.output;
-        let frame = self.swap_chain.get_current_frame()?.output;
-
-        let mut encoder = self.device.create_command_encoder(&Default::default());
-
-        {
-            let mut render_pass = begin_render_pass(&mut encoder, &frame.view);
-            // TODO make this into a closure that only takes in render_pass
-
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.draw(0..3, 0..1);
-        }
-
-        self.queue.submit(iter::once(encoder.finish()));
-
-        Ok(())
-    }
 }
 
 type Event<'a> = winit::event::Event<'a, ()>;
@@ -512,16 +375,6 @@ impl<'a> ImguiWgpu<'a> {
     }
 }
 
-fn foo() {
-    let mut x = Imgui::new(None.unwrap());
-    let frame = x.draw().unwrap();
-
-    let ui = &frame.ui;
-    ui.text("foobar");
-
-    let _ = frame.render();
-}
-
 struct ImguiMainloop<'a> {
     imgui: Imgui<'a>,
 }
@@ -532,70 +385,19 @@ impl<'a> Mainloop for ImguiMainloop<'a> {
     }
 }
 
-pub fn main() {
-    // let x: Result<&'static str, &'static str> = Err("this is a triumph");
-    // x.unwrap();
-    // panic!("this is a triumph");
+struct App<'a> {
+    wgpu: WgpuWindowed,
+    imgui: ImguiWgpu<'a>,
+}
 
-    // foo();
+impl<'a> Mainloop for App<'a> {}
+
+pub fn main() {
     wgpu_subscriber::initialize_default_subscriber(None);
 
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().build(&event_loop).unwrap();
+    let window = Window::new();
+    let wgpu = WgpuWindowed::new(&window);
+    let imgui = ImguiWgpu::new(&wgpu, &window.window);
 
-    let mut state = State::new(&window);
-
-    event_loop.run(move |event, _, control_flow| {
-        match event {
-            Event::WindowEvent {
-                ref event,
-                window_id,
-            } if window_id == window.id() => {
-                if state.input(event) {
-                    return;
-                }
-                match event {
-                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                    WindowEvent::KeyboardInput { input, .. } => match input {
-                        KeyboardInput {
-                            state: ElementState::Pressed,
-                            virtual_keycode: Some(VirtualKeyCode::Escape),
-                            ..
-                        } => *control_flow = ControlFlow::Exit,
-                        _ => {}
-                    },
-                    WindowEvent::Resized(physical_size) => {
-                        state.resize(*physical_size);
-                    }
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                        // new_inner_size is &mut so w have to dereference it twice
-                        state.resize(**new_inner_size);
-                    }
-                    // &WindowEvent::Resized(size)
-                    // | &WindowEvent::ScaleFactorChanged {
-                    //     new_inner_size: &mut size,
-                    //     ..
-                    // } => state.resize(size),
-                    _ => {}
-                }
-            }
-            Event::RedrawRequested(_) => {
-                state.update();
-                match state.render() {
-                    // Recreate the swap_chain if lost
-                    Err(wgpu::SwapChainError::Lost) => state.resize(state.size),
-                    // Err(wgpu::SwapChainError::Outdated) => state.resize(window.inner_size()),
-                    Err(wgpu::SwapChainError::Outdated) => eprintln!("outdated!"),
-                    // The system is out of memory, we should probably quit
-                    other => other.unwrap(),
-                }
-            }
-            Event::MainEventsCleared => {
-                // RedrawRequested will only trigger once, unless we manually
-                // request it.
-                window.request_redraw();
-            }
-            _ => {}
-        }
-    });
+    // let app = App { wgpu, imgui };
 }
