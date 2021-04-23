@@ -1,4 +1,4 @@
-use std::{iter, marker::PhantomData};
+use std::{iter, marker::PhantomData, path::Path};
 
 use imgui::DrawData;
 use winit::{
@@ -75,8 +75,8 @@ impl State {
         };
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
-        let vs_module = device.create_shader_module(&wgpu::include_spirv!("shader.vert.spv"));
-        let fs_module = device.create_shader_module(&wgpu::include_spirv!("shader.frag.spv"));
+        let vs_module = device.create_shader_module(&crate::shaders::load("shader.frag"));
+        let fs_module = device.create_shader_module(&crate::shaders::load("shader.vert"));
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
@@ -116,6 +116,7 @@ impl State {
     }
 
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+        // println!("resize");
         self.size = new_size;
         self.sc_desc.width = new_size.width;
         self.sc_desc.height = new_size.height;
@@ -130,6 +131,11 @@ impl State {
     fn update(&mut self) {}
 
     fn render(&mut self) -> Result<(), wgpu::SwapChainError> {
+        // let texture = self.swap_chain.get_current_frame()?;
+        // if texture.suboptimal {
+        //     println!("suboptimal");
+        // }
+        // let frame = texture.output;
         let frame = self.swap_chain.get_current_frame()?.output;
 
         let mut encoder = self.device.create_command_encoder(&Default::default());
@@ -229,6 +235,16 @@ enum ImguiStatus {
     Suspended(imgui::SuspendedContext),
 }
 
+impl ImguiStatus {
+    fn get(&mut self) -> Option<&mut imgui::Context> {
+        if let ImguiStatus::Enabled(context) = self {
+            Some(context)
+        } else {
+            None
+        }
+    }
+}
+
 // Imgui for winit
 struct Imgui<'a> {
     context: ImguiStatus,
@@ -244,6 +260,7 @@ struct ImguiFrame<'a, 'ui> {
 }
 
 impl<'a, 'ui> ImguiFrame<'a, 'ui> {
+    #[must_use]
     fn render(self) -> &'ui imgui::DrawData {
         self.platform.prepare_render(&self.ui, self.window);
         self.ui.render()
@@ -279,45 +296,22 @@ impl<'a> Imgui<'a> {
         }
     }
 
-    fn context<T, U>(&mut self, f: T) -> Option<U>
-    where
-        T: FnMut(&mut imgui::Context) -> U,
-    {
-        if let ImguiStatus::Enabled(context) = &mut self.context {
-            Some(f(context))
-        } else {
-            None
-        }
+    fn event(&mut self, event: &Event) -> Option<()> {
+        self.platform
+            .handle_event(self.context.get()?.io_mut(), self.window, event);
+        Some(())
     }
 
-    fn event(&mut self, event: &Event) {
-        self.context(|context| {
-            self.platform
-                .handle_event(context.io_mut(), self.window, event)
-        });
-    }
+    #[must_use]
+    fn draw(&mut self) -> Option<ImguiFrame> {
+        let context = self.context.get()?;
 
-    fn render(&mut self) -> Option<ImguiFrame> {
-        // self.context(|context| {
-        //     self.platform
-        //         .prepare_frame(context.io_mut(), self.window)
-        //         .unwrap();
+        self.platform
+            .prepare_frame(context.io_mut(), self.window)
+            .unwrap();
 
-        //     ImguiFrame {
-        //         ui: context.frame(),
-        //         window: self.window,
-        //         platform: &mut self.platform,
-        //     }
-        // })
-
-        self.context(move |context| {
-            self.platform
-                .prepare_frame(context.io_mut(), self.window)
-                .unwrap();
-            context.frame()
-        })
-        .map(move |ui| ImguiFrame {
-            ui,
+        Some(ImguiFrame {
+            ui: context.frame(),
             window: self.window,
             platform: &mut self.platform,
         })
@@ -325,13 +319,13 @@ impl<'a> Imgui<'a> {
 }
 
 fn foo() {
-    let mut x: Imgui = None.unwrap();
-    let frame = x.render().unwrap();
+    let mut x = Imgui::new(None.unwrap());
+    let frame = x.draw().unwrap();
 
     let ui = &frame.ui;
     ui.text("foobar");
 
-    frame.render();
+    let _ = frame.render();
 }
 
 struct ImguiMainloop<'a> {
@@ -340,11 +334,20 @@ struct ImguiMainloop<'a> {
 
 impl<'a> Mainloop for ImguiMainloop<'a> {
     fn event(&mut self, event: &Event) {
-        self.imgui.event(event)
+        self.imgui.event(event);
     }
 }
 
+fn compile_glsl(filename: &str) {
+    // wgpu::ShaderModuleDescriptor
+    // wgpu::util::make_spirv
+}
+
 pub fn main() {
+    // let x: Result<&'static str, &'static str> = Err("this is a triumph");
+    // x.unwrap();
+    // panic!("this is a triumph");
+
     // foo();
     // wgpu_subscriber::initialize_default_subscriber(None);
     env_logger::init();
@@ -380,6 +383,11 @@ pub fn main() {
                         // new_inner_size is &mut so w have to dereference it twice
                         state.resize(**new_inner_size);
                     }
+                    // &WindowEvent::Resized(size)
+                    // | &WindowEvent::ScaleFactorChanged {
+                    //     new_inner_size: &mut size,
+                    //     ..
+                    // } => state.resize(size),
                     _ => {}
                 }
             }
@@ -388,6 +396,7 @@ pub fn main() {
                 match state.render() {
                     // Recreate the swap_chain if lost
                     Err(wgpu::SwapChainError::Lost) => state.resize(state.size),
+                    // Err(wgpu::SwapChainError::Outdated) => state.resize(window.inner_size()),
                     // The system is out of memory, we should probably quit
                     other => other.unwrap(),
                 }

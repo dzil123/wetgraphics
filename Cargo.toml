@@ -19,6 +19,12 @@ wgpu-subscriber = "0.1.0"
 imgui = "0.7.0"
 imgui-winit-support = "0.7.0"
 pollster = "0.2.3"
+phf = "0.8"
+
+[build_dependencies]
+phf_codegen = "0.8"
+shaderc = "0.7.2"
+walkdir = "2.3.2"
 
 [features]
 shader_compile = []
