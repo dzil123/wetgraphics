@@ -66,6 +66,8 @@ impl State {
             .block_on()
             .unwrap();
 
+        dbg!(device.features(), device.limits());
+
         let sc_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
             format: wgpu::TextureFormat::Bgra8UnormSrgb,
@@ -75,8 +77,8 @@ impl State {
         };
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
-        let vs_module = device.create_shader_module(&crate::shaders::load("shader.frag"));
-        let fs_module = device.create_shader_module(&crate::shaders::load("shader.vert"));
+        let vs_module = crate::shaders::load(&device, "shader.vert");
+        let fs_module = crate::shaders::load(&device, "shader.frag");
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
@@ -102,6 +104,10 @@ impl State {
             },
             depth_stencil: None,
             multisample: Default::default(),
+            // multisample: wgpu::MultisampleState {
+            //     count: 2,
+            //     ..Default::default()
+            // },
         });
 
         Self {
@@ -349,8 +355,7 @@ pub fn main() {
     // panic!("this is a triumph");
 
     // foo();
-    // wgpu_subscriber::initialize_default_subscriber(None);
-    env_logger::init();
+    wgpu_subscriber::initialize_default_subscriber(None);
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();

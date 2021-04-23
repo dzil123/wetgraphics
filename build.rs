@@ -1,5 +1,3 @@
-// #![allow(unused_imports, unused_variables, unreachable_code, dead_code)]
-
 use shaderc::{CompileOptions, Compiler, OptimizationLevel, ShaderKind};
 use std::fs::read_to_string;
 use std::fs::File;
@@ -7,10 +5,11 @@ use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::{env, path::PathBuf};
 
+#[derive(Debug)]
 struct Shader {
     file: PathBuf,
     shader_type: ShaderKind,
-    filename: String, // relative to root folder
+    filename: String, // relative to root folder, but can be arbitrary
 }
 
 struct Error(String);
@@ -55,6 +54,10 @@ fn main() {
         })
         .collect();
 
+    format!("{:#?}", queue)
+        .lines()
+        .for_each(|line| println!("cargo:warning={}", line));
+
     let mut options = CompileOptions::new().unwrap();
     options.set_optimization_level(OptimizationLevel::Performance);
     options.set_warnings_as_errors();
@@ -88,6 +91,7 @@ fn main() {
 
     let path = Path::new(&env::var_os("OUT_DIR").unwrap()).join("codegen_shaders.rs");
     println!("cargo:warning={:?}", path);
+
     let mut file = BufWriter::new(File::create(&path).unwrap());
 
     write!(
@@ -97,5 +101,6 @@ fn main() {
     )
     .unwrap();
 
+    // manually sync bufwriter + file to catch errors instead of during drop
     file.into_inner().unwrap().sync_all().unwrap();
 }

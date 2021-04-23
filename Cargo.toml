@@ -1,30 +1,19 @@
 [package]
 name = "wetgraphics"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["dzil123 <5725958+dzil123@users.noreply.github.com>"]
 edition = "2018"
 
 [dependencies]
-image = "0.23.14"
-winit = "0.24.0"
-shaderc = "0.7.2"
-cgmath = "0.18.0"
-env_logger = "0.8.3"
-log = "0.4.14"
-wgpu = "0.7.1"
-glob = "0.3"
-fs_extra = "1.2"
-anyhow = "1.0"
-wgpu-subscriber = "0.1.0"
-imgui = "0.7.0"
-imgui-winit-support = "0.7.0"
-pollster = "0.2.3"
+winit = "0.24"
+wgpu = "0.7"
+wgpu-subscriber = "0.1"
+imgui = "0.7"
+imgui-winit-support = "0.7"
+pollster = "0.2"
 phf = "0.8"
 
 [build_dependencies]
 phf_codegen = "0.8"
-shaderc = "0.7.2"
+shaderc = "0.7"
 walkdir = "2.3.2"
-
-[features]
-shader_compile = []

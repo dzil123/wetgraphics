@@ -10,15 +10,22 @@ fn lookup(name: &str) -> ShaderResult {
     *SHADERS.get(name).unwrap_or(&Err("Not Found"))
 }
 
-pub fn load(name: &str) -> wgpu::ShaderModuleDescriptor {
+#[track_caller]
+pub fn load(device: &wgpu::Device, name: &str) -> wgpu::ShaderModule {
     let shader = match lookup(name) {
         Ok(shader) => shader,
-        Err(err) => panic!("Could not load shader '{}' because {}", name, err),
+        Err(err) => panic!("Could not load shader '{}': {}", name, err),
     };
 
-    wgpu::ShaderModuleDescriptor {
+    let shader = wgpu::ShaderModuleDescriptor {
         label: Some(name),
         source: wgpu::util::make_spirv(shader),
-        flags: wgpu::ShaderFlags::VALIDATION,
-    }
+        flags: if cfg!(debug_assertions) {
+            wgpu::ShaderFlags::VALIDATION
+        } else {
+            wgpu::ShaderFlags::empty()
+        },
+    };
+
+    device.create_shader_module(&shader)
 }
