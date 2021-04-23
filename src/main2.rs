@@ -52,25 +52,27 @@ impl State {
             .block_on()
             .unwrap();
 
-        let pushconst_device = wgpu::DeviceDescriptor {
-            features: wgpu::Features::PUSH_CONSTANTS,
-            limits: wgpu::Limits {
-                max_push_constant_size: 128, // i have it on good authority that this is the max for a rx 580 and igpu
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-
         let (device, queue) = adapter
-            .request_device(&pushconst_device, None)
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    features: wgpu::Features::PUSH_CONSTANTS,
+                    limits: wgpu::Limits {
+                        max_push_constant_size: 128, // i have it on good authority that this is the max for a rx 580 and igpu
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                None,
+            )
             .block_on()
             .unwrap();
 
-        dbg!(device.features(), device.limits());
+        // dbg!(device.features(), device.limits());
+        dbg!(adapter.get_swap_chain_preferred_format(&surface));
 
         let sc_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8UnormSrgb,
+            format: wgpu::TextureFormat::Bgra8Unorm,
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
@@ -82,7 +84,13 @@ impl State {
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
-            layout: Some(&device.create_pipeline_layout(&Default::default())),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Default::default(),
+                    bind_group_layouts: Default::default(),
+                    push_constant_ranges: Default::default(),
+                }),
+            ),
             vertex: wgpu::VertexState {
                 module: &vs_module,
                 entry_point: "main",
@@ -104,10 +112,6 @@ impl State {
             },
             depth_stencil: None,
             multisample: Default::default(),
-            // multisample: wgpu::MultisampleState {
-            //     count: 2,
-            //     ..Default::default()
-            // },
         });
 
         Self {
@@ -162,6 +166,133 @@ impl State {
 
 type Event<'a> = winit::event::Event<'a, ()>;
 
+struct WgpuBase {
+    adapter: wgpu::Adapter,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    surface: Option<wgpu::Surface>,
+}
+
+impl WgpuBase {
+    fn new<T>(window: Option<&T>) -> Self
+    where
+        T: SafeWgpuSurface,
+    {
+        let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
+
+        let surface = window.map(|window| window.create_surface(&instance));
+
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: surface.as_ref(),
+                ..Default::default()
+            })
+            .block_on()
+            .unwrap();
+
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    features: wgpu::Features::PUSH_CONSTANTS,
+                    limits: wgpu::Limits {
+                        max_push_constant_size: 128, // i have it on good authority that this is the max for a rx 580 and igpu
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                None,
+            )
+            .block_on()
+            .unwrap();
+
+        Self {
+            adapter,
+            device,
+            queue,
+            surface,
+        }
+    }
+
+    fn render<T>(&self, texture: &wgpu::TextureView, mut f: T)
+    where
+        T: FnMut(wgpu::RenderPass),
+    {
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+
+        f(begin_render_pass(&mut encoder, texture));
+
+        self.queue.submit(iter::once(encoder.finish()));
+    }
+}
+
+// should this store window?
+struct WgpuWindowed {
+    base: WgpuBase,
+    surface: wgpu::Surface,
+    swap_chain_desc: wgpu::SwapChainDescriptor,
+    swap_chain: wgpu::SwapChain,
+}
+
+impl WgpuWindowed {
+    fn new(window: &Window) -> Self {
+        let mut base = WgpuBase::new(Some(window));
+        let surface = base.surface.take().unwrap();
+
+        let size = window.window.inner_size();
+
+        let swap_chain_desc = wgpu::SwapChainDescriptor {
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+            format: wgpu::TextureFormat::Bgra8Unorm,
+            width: size.width,
+            height: size.height,
+            present_mode: wgpu::PresentMode::Fifo,
+        };
+        let swap_chain = base.device.create_swap_chain(&surface, &swap_chain_desc);
+
+        Self {
+            base,
+            surface,
+            swap_chain_desc,
+            swap_chain,
+        }
+    }
+
+    fn resize(&mut self, size: Option<winit::dpi::PhysicalSize<u32>>) {
+        if let Some(size) = size {
+            self.swap_chain_desc.width = size.width;
+            self.swap_chain_desc.height = size.height;
+        }
+
+        self.swap_chain = self
+            .base
+            .device
+            .create_swap_chain(&self.surface, &self.swap_chain_desc);
+    }
+
+    fn render<T>(&mut self, f: T)
+    where
+        T: FnMut(wgpu::RenderPass),
+    {
+        let texture = match self.swap_chain.get_current_frame() {
+            Ok(frame) => frame.output,
+            Err(err) => {
+                return match err {
+                    wgpu::SwapChainError::Lost => self.resize(None),
+                    wgpu::SwapChainError::OutOfMemory => panic!("{}", err),
+                    _ => {}
+                }
+            }
+        };
+
+        self.base.render(&texture.view, f);
+    }
+}
+
+trait SafeWgpuSurface {
+    fn create_surface(&self, instance: &wgpu::Instance) -> wgpu::Surface;
+}
+
 struct Window {
     event_loop: winit::event_loop::EventLoop<()>,
     window: winit::window::Window,
@@ -175,11 +306,6 @@ impl Window {
         Self { event_loop, window }
     }
 
-    fn create_surface(&self, instance: wgpu::Instance) -> wgpu::Surface {
-        // SAFETY: this is always safe for a valid winit::Window
-        unsafe { instance.create_surface(&self.window) }
-    }
-
     fn run<T>(self, mut mainloop: T) -> !
     where
         T: Mainloop + 'static,
@@ -191,6 +317,10 @@ impl Window {
 
             match event {
                 Event::RedrawRequested(_) => {
+                    // let should_close = mainloop.render();
+                    // if should_close {
+                    //     *control_flow = ControlFlow::Exit
+                    // }
                     mainloop.render();
                 }
                 Event::MainEventsCleared => {
@@ -222,10 +352,20 @@ impl Window {
     }
 }
 
+impl SafeWgpuSurface for Window {
+    fn create_surface(&self, instance: &wgpu::Instance) -> wgpu::Surface {
+        // SAFETY: this is always safe for a valid winit::Window
+        unsafe { instance.create_surface(&self.window) }
+    }
+}
+
 trait Mainloop {
     fn event(&mut self, _event: &Event) {}
     fn input(&mut self, _event: &WindowEvent) {}
     fn render(&mut self) {}
+    // fn render(&mut self) -> bool {
+    //     false
+    // }
 
     fn ignore_keyboard(&self) -> bool {
         false
@@ -324,6 +464,54 @@ impl<'a> Imgui<'a> {
     }
 }
 
+struct ImguiWgpu<'a> {
+    base: Imgui<'a>,
+    wgpu_window: &'a WgpuWindowed,
+    renderer: imgui_wgpu::Renderer,
+}
+
+impl<'a> ImguiWgpu<'a> {
+    fn new(wgpu_window: &'a WgpuWindowed, window: &'a winit::window::Window) -> Self {
+        let mut base = Imgui::new(window);
+
+        let format = wgpu_window.swap_chain_desc.format;
+
+        let mut config = if format.describe().srgb {
+            imgui_wgpu::RendererConfig::new_srgb()
+        } else {
+            imgui_wgpu::RendererConfig::new()
+        };
+        config.texture_format = format;
+
+        let renderer = imgui_wgpu::Renderer::new(
+            base.context.get().unwrap(),
+            &wgpu_window.base.device,
+            &wgpu_window.base.queue,
+            config,
+        );
+
+        Self {
+            base,
+            wgpu_window,
+            renderer,
+        }
+    }
+
+    fn render(&mut self) {
+        let frame: ImguiFrame = None.unwrap();
+        let mut renderpass: wgpu::RenderPass = None.unwrap();
+
+        self.renderer
+            .render(
+                frame.render(),
+                &self.wgpu_window.base.queue,
+                &self.wgpu_window.base.device,
+                &mut renderpass,
+            )
+            .unwrap();
+    }
+}
+
 fn foo() {
     let mut x = Imgui::new(None.unwrap());
     let frame = x.draw().unwrap();
@@ -342,11 +530,6 @@ impl<'a> Mainloop for ImguiMainloop<'a> {
     fn event(&mut self, event: &Event) {
         self.imgui.event(event);
     }
-}
-
-fn compile_glsl(filename: &str) {
-    // wgpu::ShaderModuleDescriptor
-    // wgpu::util::make_spirv
 }
 
 pub fn main() {
@@ -402,6 +585,7 @@ pub fn main() {
                     // Recreate the swap_chain if lost
                     Err(wgpu::SwapChainError::Lost) => state.resize(state.size),
                     // Err(wgpu::SwapChainError::Outdated) => state.resize(window.inner_size()),
+                    Err(wgpu::SwapChainError::Outdated) => eprintln!("outdated!"),
                     // The system is out of memory, we should probably quit
                     other => other.unwrap(),
                 }
