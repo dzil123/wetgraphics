@@ -156,6 +156,8 @@ trait SafeWgpuSurface {
     fn create_surface(&self, instance: &wgpu::Instance) -> wgpu::Surface;
 }
 
+type WindowSize = winit::dpi::PhysicalSize<u32>;
+
 struct Window {
     event_loop: winit::event_loop::EventLoop<()>,
     window: winit::window::Window,
@@ -192,6 +194,11 @@ impl Window {
                 Event::WindowEvent { event, window_id } if window_id == window.id() => {
                     match event {
                         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                        WindowEvent::Resized(size)
+                        | WindowEvent::ScaleFactorChanged {
+                            new_inner_size: &mut size,
+                            ..
+                        } => mainloop.resize(size),
                         WindowEvent::KeyboardInput {
                             input:
                                 KeyboardInput {
@@ -229,6 +236,8 @@ trait Mainloop {
     // fn render(&mut self) -> bool {
     //     false
     // }
+
+    fn resize(&mut self, _size: WindowSize) {}
 
     fn ignore_keyboard(&self) -> bool {
         false
