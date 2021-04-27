@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 type Shader = &'static [u8];
 type ShaderResult = Result<Shader, &'static str>;
 

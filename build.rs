@@ -27,6 +27,8 @@ impl From<shaderc::Error> for Error {
 }
 
 fn main() {
+    // return;
+
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/shaders");
 
     // allow utf8 paths everywhere except filename and extention
@@ -54,9 +56,9 @@ fn main() {
         })
         .collect();
 
-    format!("{:#?}", queue)
-        .lines()
-        .for_each(|line| println!("cargo:warning={}", line));
+    // format!("{:#?}", queue)
+    //     .lines()
+    //     .for_each(|line| println!("cargo:warning={}", line));
 
     let mut options = CompileOptions::new().unwrap();
     options.set_optimization_level(OptimizationLevel::Performance);

@@ -1,10 +1,8 @@
-#![allow(unused_imports, unused_variables, unreachable_code, dead_code)]
+#![allow(unused_variables, unreachable_code, dead_code)]
 
-mod main2;
-
+mod mainloop;
 mod shaders;
+mod util;
+mod wgpu_base;
 
-fn main() {
-    #[cfg(not(feature = "shader_compile"))]
-    main2::main();
-}
+fn main() {}

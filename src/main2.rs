@@ -9,85 +9,7 @@ use winit::{
 
 use pollster::FutureExt as _;
 
-// simple render pass that only clears the frame to black. ignore if using depth buffer, not clearing frame, or anything more complex
-fn begin_render_pass<'a>(
-    encoder: &'a mut wgpu::CommandEncoder,
-    texture: &'a wgpu::TextureView,
-) -> wgpu::RenderPass<'a> {
-    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-            attachment: texture,
-            resolve_target: None,
-            ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                ..Default::default()
-            },
-        }],
-        ..Default::default()
-    })
-}
-
 type Event<'a> = winit::event::Event<'a, ()>;
-
-struct WgpuBase {
-    adapter: wgpu::Adapter,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    surface: Option<wgpu::Surface>,
-}
-
-impl WgpuBase {
-    fn new<T>(window: Option<&T>) -> Self
-    where
-        T: SafeWgpuSurface,
-    {
-        let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
-
-        let surface = window.map(|window| window.create_surface(&instance));
-
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: surface.as_ref(),
-                ..Default::default()
-            })
-            .block_on()
-            .unwrap();
-
-        let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::PUSH_CONSTANTS,
-                    limits: wgpu::Limits {
-                        max_push_constant_size: 128, // i have it on good authority that this is the max for a rx 580 and igpu
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-                None,
-            )
-            .block_on()
-            .unwrap();
-
-        Self {
-            adapter,
-            device,
-            queue,
-            surface,
-        }
-    }
-
-    fn render<T>(&self, texture: &wgpu::TextureView, mut f: T)
-    where
-        T: FnMut(wgpu::RenderPass),
-    {
-        let mut encoder = self.device.create_command_encoder(&Default::default());
-
-        f(begin_render_pass(&mut encoder, texture));
-
-        self.queue.submit(iter::once(encoder.finish()));
-    }
-}
 
 // should this store window?
 struct WgpuWindowed {
@@ -150,10 +72,6 @@ impl WgpuWindowed {
 
         self.base.render(&texture.view, f);
     }
-}
-
-trait SafeWgpuSurface {
-    fn create_surface(&self, instance: &wgpu::Instance) -> wgpu::Surface;
 }
 
 type WindowSize = winit::dpi::PhysicalSize<u32>;
