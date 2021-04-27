@@ -1,13 +1,19 @@
+use crate::util::WindowSize;
+use winit::event::{Event, WindowEvent};
+
 pub trait Mainloop {
-    type Inner: Mainloop;
-    type RenderParams;
+    fn event(&mut self, _event: &Event<()>) {}
+    fn input(&mut self, _event: &WindowEvent) {}
+    fn render(&mut self) {}
+    // fn render(&mut self) -> bool {
+    //     false
+    // }
 
-    fn render(&mut self, params: Self::RenderParams);
+    fn resize(&mut self, _size: WindowSize) {}
+
+    fn ignore_keyboard(&self) -> bool {
+        false
+    }
 }
 
-impl Mainloop for () {
-    type Inner = ();
-    type RenderParams = ();
-
-    fn render(&mut self, _: Self::RenderParams) {}
-}
+impl Mainloop for () {}

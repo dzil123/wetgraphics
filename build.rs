@@ -27,8 +27,6 @@ impl From<shaderc::Error> for Error {
 }
 
 fn main() {
-    // return;
-
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/shaders");
 
     // allow utf8 paths everywhere except filename and extention

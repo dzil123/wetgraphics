@@ -7,7 +7,7 @@ use wgpu::{
     RenderPassDescriptor, RequestAdapterOptions, Surface, TextureView,
 };
 
-use crate::{mainloop::Mainloop, util::SafeWgpuSurface};
+use crate::util::SafeWgpuSurface;
 
 // simple render pass that only clears the frame to black. ignore if using depth buffer, not clearing frame, or anything more complex
 fn begin_render_pass<'a>(
@@ -40,18 +40,19 @@ fn create_adapter(instance: Instance, surface: Option<&Surface>) -> (Instance, A
         })
         .block_on()
         .unwrap();
+    dbg!(adapter.get_info());
     (instance, adapter)
 }
 
-struct WgpuBase<T> {
-    inner: T,
-    adapter: Adapter,
-    device: Device,
-    queue: Queue,
+pub struct WgpuBase {
+    pub instance: Instance,
+    pub adapter: Adapter,
+    pub device: Device,
+    pub queue: Queue,
 }
 
-impl<T> WgpuBase<T> {
-    fn new_impl(inner: T, (instance, adapter): (Instance, Adapter)) -> Self {
+impl WgpuBase {
+    fn new_impl((instance, adapter): (Instance, Adapter)) -> Self {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -68,53 +69,61 @@ impl<T> WgpuBase<T> {
             .unwrap();
 
         Self {
-            inner,
+            instance,
             adapter,
             device,
             queue,
         }
     }
 
-    pub fn new(inner: T) -> Self {
-        Self::new_impl(inner, create_adapter(create_instance(), None))
+    pub fn new() -> Self {
+        Self::new_impl(create_adapter(create_instance(), None))
     }
 
-    pub fn new_surface<W>(inner: T, window: &W) -> (Self, Surface)
+    pub fn new_surface<W>(window: &W) -> (Self, Surface)
     where
         W: SafeWgpuSurface,
     {
         let instance = create_instance();
         let surface = window.create_surface(&instance);
-        let this = Self::new_impl(inner, create_adapter(instance, Some(&surface)));
+        let this = Self::new_impl(create_adapter(instance, Some(&surface)));
         (this, surface)
     }
 
-    // fn render<T>(&self, texture: &wgpu::TextureView, mut f: T)
-    // where
-    //     T: FnMut(wgpu::RenderPass),
-    // {
-    //     let mut encoder = self.device.create_command_encoder(&Default::default());
-
-    //     f(begin_render_pass(&mut encoder, texture));
-
-    //     self.queue.submit(iter::once(encoder.finish()));
-    // }
-}
-
-impl<'a, T> Mainloop for WgpuBase<T>
-where
-    T: Mainloop<RenderParams = RenderPass<'a>>,
-    // 'a: 'b,
-{
-    type Inner = T;
-    type RenderParams = &'static TextureView;
-
-    fn render(&mut self, texture: Self::RenderParams) {
+    pub fn render<T>(&self, texture: &TextureView, func: T)
+    where
+        T: FnOnce(&Self, &mut RenderPass),
+    {
         let mut encoder = self.device.create_command_encoder(&Default::default());
 
-        let render_pass = begin_render_pass(&mut encoder, texture);
-        self.inner.render(render_pass);
+        {
+            let mut render_pass = begin_render_pass(&mut encoder, texture);
+            func(self, &mut render_pass);
+        }
 
         self.queue.submit(iter::once(encoder.finish()));
     }
 }
+
+/*
+// for<'b> https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=337720452d4fa161323fb2939ee23af1
+
+impl<'a, T, X> Mainloop<'a> for WgpuBase<T>
+where
+    T: for<'b> Mainloop<'b, RenderParams = RenderPass<'b>>,
+{
+    type Inner = T;
+    type RenderParams = (&'a TextureView, X);
+
+    fn render(&'a mut self, texture: Self::RenderParams) {
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+
+        {
+            let mut render_pass = begin_render_pass(&mut encoder, texture);
+            self.inner.render(render_pass);
+        }
+
+        self.queue.submit(iter::once(encoder.finish()));
+    }
+}
+*/
