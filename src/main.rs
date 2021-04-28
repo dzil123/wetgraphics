@@ -2,12 +2,13 @@
 #![deny(rust_2018_idioms)]
 
 use ::wgpu::{
-    BlendState, ColorTargetState, ColorWrite, CullMode, FragmentState, PipelineLayoutDescriptor,
-    PrimitiveState, RenderPass, RenderPipeline, RenderPipelineDescriptor, TextureFormat,
-    VertexState,
+    util::RenderEncoder, BlendState, ColorTargetState, ColorWrite, CullMode, FragmentState,
+    PipelineLayoutDescriptor, PrimitiveState, PushConstantRange, RenderPass, RenderPipeline,
+    RenderPipelineDescriptor, ShaderStage, TextureFormat, VertexState,
 };
+use bytemuck::bytes_of;
 use winit::{
-    event::{Event, WindowEvent},
+    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     window::Window as WinitWindow,
 };
 
@@ -28,6 +29,7 @@ struct State {
     render_pipeline: RenderPipeline,
 }
 
+// todo: add parameter for textureformat, then create CreateFromWgpuWindowed that gets the format from swapchain_desc
 trait CreateFromWgpu {
     fn new(wgpu_base: &WgpuBase) -> Self;
 }
@@ -41,10 +43,13 @@ impl CreateFromWgpu for State {
             layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: Default::default(),
                 bind_group_layouts: Default::default(),
-                push_constant_ranges: Default::default(),
+                push_constant_ranges: &[PushConstantRange {
+                    stages: ShaderStage::all(),
+                    range: 0..(4 * 3),
+                }],
             })),
             vertex: VertexState {
-                module: &wgpu_base.shader("shader.vert"),
+                module: &wgpu_base.shader("fullscreen.vert"),
                 entry_point: "main",
                 buffers: &[],
             },
@@ -52,7 +57,7 @@ impl CreateFromWgpu for State {
                 module: &wgpu_base.shader("shader.frag"),
                 entry_point: "main",
                 targets: &[ColorTargetState {
-                    format: TextureFormat::Bgra8Unorm, // todo get from wgpu_windowed.swapchain_desc?
+                    format: TextureFormat::Bgra8Unorm, // todo get from wgpu_windowed.swapchain_desc? // update: it crashes if it isnt lol
                     alpha_blend: BlendState::REPLACE,
                     color_blend: BlendState::REPLACE,
                     write_mask: ColorWrite::ALL,
@@ -70,9 +75,34 @@ impl CreateFromWgpu for State {
     }
 }
 
+// O = 4 * I
+fn vec<const I: usize, const O: usize>(x: [f32; I]) -> [u8; O] {
+    let mut ret = [0u8; O];
+
+    for (val, arr) in x.iter().zip(ret.chunks_exact_mut(4)) {
+        arr.copy_from_slice(&val.to_le_bytes())
+    }
+
+    ret
+}
+
+fn vec4(x: [f32; 4]) -> [u8; 4 * 4] {
+    let mut ret = [0u8; 4 * 4];
+
+    x.iter()
+        .zip(ret.chunks_exact_mut(4))
+        .for_each(|(val, arr)| arr.copy_from_slice(&val.to_le_bytes()));
+
+    ret
+}
+
 impl WgpuWindowedRender for State {
     fn render<'a>(&'a mut self, _: &WgpuWindowed<'_>, render_pass: &mut RenderPass<'a>) {
+        let color: [f32; 3] = [0.0, 0.5, 1.0];
+
         render_pass.set_pipeline(&self.render_pipeline);
+        // render_pass.set_push_constants(ShaderStage::all(), 0, &vec4([0.0, 0.5, 1.0, 1.0]));
+        render_pass.set_push_constants(ShaderStage::all(), 0, bytes_of(&color));
         render_pass.draw(0..3, 0..1);
     }
 }
@@ -150,7 +180,24 @@ where
         self.imgui.base.event(event);
     }
 
-    fn input(&mut self, _event: &WindowEvent<'_>) {}
+    fn input(&mut self, event: &WindowEvent<'_>) {
+        if let WindowEvent::KeyboardInput {
+            input:
+                KeyboardInput {
+                    virtual_keycode: Some(key),
+                    state: ElementState::Pressed,
+                    ..
+                },
+            ..
+        } = event
+        {
+            match key {
+                VirtualKeyCode::S => self.imgui.base.suspend(),
+                VirtualKeyCode::E => self.imgui.base.enable(),
+                _ => {}
+            }
+        }
+    }
 
     fn render<'x>(&'x mut self) {
         self.wgpu_window
@@ -162,7 +209,12 @@ where
     }
 
     fn ignore_keyboard(&self) -> bool {
-        false
+        self.imgui
+            .base
+            .context
+            .get_ref()
+            .map(|imgui| imgui.io().want_capture_keyboard)
+            .unwrap_or(false)
     }
 }
 

@@ -1,3 +1,5 @@
+use std::mem::{replace, swap};
+
 use imgui::{Context, DrawData, FontConfig, FontSource, SuspendedContext, Ui};
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use winit::{event::Event, window::Window};
@@ -5,10 +7,19 @@ use winit::{event::Event, window::Window};
 pub enum ImguiStatus {
     Enabled(Context),
     Suspended(SuspendedContext),
+    Invalid,
 }
 
 impl ImguiStatus {
     pub fn get(&mut self) -> Option<&mut Context> {
+        if let ImguiStatus::Enabled(context) = self {
+            Some(context)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_ref(&self) -> Option<&Context> {
         if let ImguiStatus::Enabled(context) = self {
             Some(context)
         } else {
@@ -73,5 +84,31 @@ impl<'a> Imgui<'a> {
         let draw_data = ui.render();
 
         Some(draw_data)
+    }
+
+    pub fn enable(&mut self) {
+        let context = replace(&mut self.context, ImguiStatus::Invalid);
+
+        if let ImguiStatus::Suspended(context) = context {
+            self.context = ImguiStatus::Enabled(context.activate().unwrap());
+        } else {
+            println!("already enabled");
+            self.context = context;
+        }
+
+        debug_assert!(!matches!(self.context, ImguiStatus::Invalid));
+    }
+
+    pub fn suspend(&mut self) {
+        let context = replace(&mut self.context, ImguiStatus::Invalid);
+
+        if let ImguiStatus::Enabled(context) = context {
+            self.context = ImguiStatus::Suspended(context.suspend());
+        } else {
+            println!("already suspended");
+            self.context = context;
+        }
+
+        debug_assert!(!matches!(self.context, ImguiStatus::Invalid));
     }
 }

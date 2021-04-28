@@ -5,6 +5,7 @@ authors = [ "dzil123 <5725958+dzil123@users.noreply.github.com>" ]
 edition = "2018"
 
 [dependencies]
+bytemuck = "1.5"
 imgui = "0.7"
 imgui-wgpu = "0.14"
 imgui-winit-support = "0.7"

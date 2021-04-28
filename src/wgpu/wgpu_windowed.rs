@@ -21,10 +21,11 @@ impl<'a> WgpuWindowed<'a> {
 
         let swap_chain_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8Unorm, // adapter.get_swap_chain_preferred_format?
+            format: wgpu::TextureFormat::Bgra8Unorm, // adapter.get_swap_chain_preferred_format? // srgb causes linear colors passed in as push constants to be incorrectly lightened
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
+            // present_mode: wgpu::PresentMode::Immediate, // this setting causes imgui to freak out, it thinks time is going super fast, probably because it thinks 60fps and has no other clock
         };
         let swap_chain = base.device.create_swap_chain(&surface, &swap_chain_desc);
 

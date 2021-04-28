@@ -18,9 +18,13 @@ impl<'a> ImguiWgpu<'a> {
         let format = wgpu_window.swap_chain_desc.format;
 
         let mut config = if format.describe().srgb {
-            imgui_wgpu::RendererConfig::new_srgb()
-        } else {
+            println!("chose srgb for imgui_wgpu");
+            // yeah so read the docs, new() is intended for srgb texture because it does not do srgb correction because the srgb texture type already does that correction
             imgui_wgpu::RendererConfig::new()
+        } else {
+            println!("chose linear for imgui_wgpu");
+            // while new_srgb() _does_ do srgb correction because the linear texture type doesn't
+            imgui_wgpu::RendererConfig::new_srgb()
         };
         config.texture_format = format;
 

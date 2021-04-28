@@ -21,13 +21,11 @@ impl Window {
 
     // although this function returns, you should not do anything after this function
     // this is only using event_loop.run_return() instead of event_loop.run() to workaround the T: 'static requirement otherwise
-    pub fn run<T>(self, window: &WinitWindow, mut mainloop: T)
+    pub fn run<T>(mut self, window: &WinitWindow, mut mainloop: T)
     where
         T: Mainloop,
     {
-        let Self { mut event_loop } = self;
-
-        event_loop.run_return(move |event: Event<'_, ()>, _, control_flow| {
+        self.event_loop.run_return(move |event, _, control_flow| {
             mainloop.event(&event);
 
             match event {
@@ -42,6 +40,7 @@ impl Window {
                     window.request_redraw();
                 }
                 Event::WindowEvent { event, window_id } if window_id == window.id() => {
+                    mainloop.input(&event); // todo find way to apply ignore_keyboard() to this
                     match event {
                         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                         WindowEvent::Resized(size)
@@ -72,6 +71,12 @@ impl Window {
                 _ => {}
             }
         })
+    }
+}
+
+impl Drop for Window {
+    fn drop(&mut self) {
+        println!("exited cleanly");
     }
 }
 
