@@ -27,7 +27,7 @@ impl Window {
     {
         let Self { mut event_loop } = self;
 
-        event_loop.run_return(move |event: Event<()>, _, control_flow| {
+        event_loop.run_return(move |event: Event<'_, ()>, _, control_flow| {
             mainloop.event(&event);
 
             match event {

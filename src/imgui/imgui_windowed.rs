@@ -50,26 +50,26 @@ impl<'a> Imgui<'a> {
         }
     }
 
-    fn event(&mut self, event: &Event<()>) -> Option<()> {
+    fn event(&mut self, event: &Event<'_, ()>) -> Option<()> {
         self.platform
             .handle_event(self.context.get()?.io_mut(), self.window, event);
         Some(())
     }
 
-    pub fn render<T>(&mut self, window: &Window, func: T) -> Option<&DrawData>
+    pub fn render<T>(&mut self, func: T) -> Option<&DrawData>
     where
-        T: FnOnce(&mut Ui),
+        T: FnOnce(&mut Ui<'_>),
     {
         let context = self.context.get()?;
 
         self.platform
-            .prepare_frame(context.io_mut(), window)
+            .prepare_frame(context.io_mut(), self.window)
             .unwrap();
 
         let mut ui = context.frame();
         func(&mut ui);
 
-        self.platform.prepare_render(&ui, window);
+        self.platform.prepare_render(&ui, self.window);
         let draw_data = ui.render();
 
         Some(draw_data)

@@ -4,7 +4,7 @@ use pollster::FutureExt as _;
 use wgpu::{
     Adapter, BackendBit, Color, CommandEncoder, Device, Features, Instance, Limits, LoadOp,
     Operations, PowerPreference, Queue, RenderPass, RenderPassColorAttachmentDescriptor,
-    RenderPassDescriptor, RequestAdapterOptions, Surface, TextureView,
+    RenderPassDescriptor, RequestAdapterOptions, ShaderModule, Surface, TextureView,
 };
 
 use crate::util::SafeWgpuSurface;
@@ -92,38 +92,21 @@ impl WgpuBase {
 
     pub fn render<T>(&self, texture: &TextureView, func: T)
     where
-        T: FnOnce(&Self, &mut RenderPass),
+        T: FnOnce(&Self, RenderPass<'_>),
     {
         let mut encoder = self.device.create_command_encoder(&Default::default());
 
         {
             let mut render_pass = begin_render_pass(&mut encoder, texture);
-            func(self, &mut render_pass);
+            func(self, render_pass);
         }
 
         self.queue.submit(iter::once(encoder.finish()));
     }
+
+    pub fn shader(&self, name: &str) -> ShaderModule {
+        crate::shaders::load(&self.device, name)
+    }
 }
 
-/*
 // for<'b> https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=337720452d4fa161323fb2939ee23af1
-
-impl<'a, T, X> Mainloop<'a> for WgpuBase<T>
-where
-    T: for<'b> Mainloop<'b, RenderParams = RenderPass<'b>>,
-{
-    type Inner = T;
-    type RenderParams = (&'a TextureView, X);
-
-    fn render(&'a mut self, texture: Self::RenderParams) {
-        let mut encoder = self.device.create_command_encoder(&Default::default());
-
-        {
-            let mut render_pass = begin_render_pass(&mut encoder, texture);
-            self.inner.render(render_pass);
-        }
-
-        self.queue.submit(iter::once(encoder.finish()));
-    }
-}
-*/

@@ -1,9 +1,8 @@
 use wgpu::RenderPass;
 use winit::window::Window;
 
-use crate::{util::WindowSize, wgpu_base::WgpuBase};
-
-// type Input =
+use super::wgpu_base::WgpuBase;
+use crate::util::WindowSize;
 
 // should this store window?
 pub struct WgpuWindowed<'a> {
@@ -52,7 +51,7 @@ impl<'a> WgpuWindowed<'a> {
 
     pub fn render<T>(&mut self, func: T)
     where
-        T: FnOnce(&Self, &WgpuBase, &mut RenderPass),
+        T: FnOnce(&Self, &WgpuBase, RenderPass<'_>),
     {
         let texture = match self.swap_chain.get_current_frame() {
             Ok(frame) => frame.output,
@@ -65,7 +64,7 @@ impl<'a> WgpuWindowed<'a> {
             }
         };
 
-        let new_func = |wgpu_base: &WgpuBase, renderpass: &mut RenderPass| {
+        let new_func = |wgpu_base: &WgpuBase, renderpass: RenderPass<'_>| {
             func(self, wgpu_base, renderpass);
         };
 

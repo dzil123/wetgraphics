@@ -3,17 +3,17 @@ use imgui_wgpu::Renderer;
 use wgpu::RenderPass;
 use winit::window::Window;
 
-use crate::imgui_windowed::Imgui;
-use crate::wgpu_windowed::WgpuWindowed;
+use super::Imgui;
+use crate::wgpu::WgpuWindowed;
 
-struct ImguiWgpu<'a> {
+pub struct ImguiWgpu<'a> {
     base: Imgui<'a>,
     wgpu_window: &'a WgpuWindowed<'a>,
     renderer: Renderer,
 }
 
 impl<'a> ImguiWgpu<'a> {
-    fn new(window: &'a Window, wgpu_window: &'a WgpuWindowed) -> Self {
+    pub fn new(window: &'a Window, wgpu_window: &'a WgpuWindowed<'_>) -> Self {
         let mut base = Imgui::new(window);
 
         let format = wgpu_window.swap_chain_desc.format;
@@ -39,11 +39,11 @@ impl<'a> ImguiWgpu<'a> {
         }
     }
 
-    pub fn render<'b, T>(&'b mut self, window: &Window, renderpass: &mut RenderPass<'b>, func: T)
+    pub fn render<'b, T>(&'b mut self, renderpass: &mut RenderPass<'b>, func: T)
     where
-        T: FnOnce(&mut Ui),
+        T: FnOnce(&mut Ui<'_>),
     {
-        if let Some(draw_data) = self.base.render(window, func) {
+        if let Some(draw_data) = self.base.render(func) {
             self.renderer
                 .render(
                     draw_data,
