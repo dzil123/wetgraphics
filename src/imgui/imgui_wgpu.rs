@@ -73,14 +73,14 @@ impl<'a> ImguiWgpu<'a> {
     pub fn partial_render<'r, T>(
         &'r mut self,
         target: &'r mut T,
-    ) -> impl WgpuWindowedRender + 'a + 'r
+    ) -> impl WgpuWindowedRender + Captures<'a> + 'r
     where
         T: WgpuWindowedRender + ImguiWgpuRender,
     {
         ImguiWgpuWrapper {
             imgui: self,
             inner: target,
-        };
+        }
     }
 }
 
@@ -105,3 +105,7 @@ where
 pub trait ImguiWgpuRender {
     fn render_ui(&mut self, _: &mut Ui<'_>);
 }
+
+// workaround for bug in `impl Trait`: https://github.com/rust-lang/rust/issues/61756
+pub trait Captures<'x> {}
+impl<T: ?Sized> Captures<'_> for T {}

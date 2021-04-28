@@ -95,7 +95,3 @@ where
 pub trait WgpuWindowedRender {
     fn render<'a>(&'a mut self, wgpu_windowed: &WgpuWindowed<'_>, render_pass: &mut RenderPass<'a>);
 }
-
-impl WgpuWindowedRender for () {
-    fn render<'a>(&'a mut self, _: &WgpuWindowed<'_>, _: &mut RenderPass<'a>) {}
-}

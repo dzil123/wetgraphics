@@ -79,7 +79,7 @@ impl WgpuWindowedRender for State {
 
 impl ImguiWgpuRender for State {
     fn render_ui(&mut self, ui: &mut ::imgui::Ui<'_>) {
-        todo!()
+        ui.show_demo_window(&mut false);
     }
 }
 

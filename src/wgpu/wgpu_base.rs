@@ -114,7 +114,3 @@ impl WgpuBase {
 pub trait WgpuBaseRender {
     fn render<'a>(&'a mut self, wgpu_base: &WgpuBase, render_pass: &mut RenderPass<'a>);
 }
-
-impl WgpuBaseRender for () {
-    fn render<'a>(&'a mut self, _: &WgpuBase, _: &mut RenderPass<'a>) {}
-}

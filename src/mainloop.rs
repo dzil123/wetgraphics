@@ -15,5 +15,3 @@ pub trait Mainloop {
         false
     }
 }
-
-impl Mainloop for () {}
