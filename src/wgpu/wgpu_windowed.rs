@@ -49,9 +49,9 @@ impl<'a> WgpuWindowed<'a> {
             .create_swap_chain(&self.surface, &self.swap_chain_desc);
     }
 
-    pub fn render<T>(&mut self, func: T)
+    pub fn render<T>(&mut self, target: &mut T)
     where
-        T: FnOnce(&Self, &WgpuBase, RenderPass<'_>),
+        T: WgpuWindowedRender,
     {
         let texture = match self.swap_chain.get_current_frame() {
             Ok(frame) => frame.output,
@@ -64,10 +64,38 @@ impl<'a> WgpuWindowed<'a> {
             }
         };
 
-        let new_func = |wgpu_base: &WgpuBase, renderpass: RenderPass<'_>| {
-            func(self, wgpu_base, renderpass);
+        let mut helper = HelperRenderTarget {
+            wgpu_windowed: &self,
+            inner: target,
         };
 
-        self.base.render(&texture.view, new_func);
+        self.base.render(&texture.view, &mut helper);
     }
+}
+
+struct HelperRenderTarget<'a, T> {
+    wgpu_windowed: &'a WgpuWindowed<'a>,
+    inner: &'a mut T,
+}
+
+impl<'a, T> super::wgpu_base::WgpuBaseRender for HelperRenderTarget<'a, T>
+where
+    T: WgpuWindowedRender,
+{
+    fn render<'b>(&'b mut self, _: &WgpuBase, render_pass: &mut RenderPass<'b>) {
+        let Self {
+            wgpu_windowed,
+            inner,
+        } = self;
+
+        inner.render(wgpu_windowed, render_pass);
+    }
+}
+
+pub trait WgpuWindowedRender {
+    fn render<'a>(&'a mut self, wgpu_windowed: &WgpuWindowed<'_>, render_pass: &mut RenderPass<'a>);
+}
+
+impl WgpuWindowedRender for () {
+    fn render<'a>(&'a mut self, _: &WgpuWindowed<'_>, _: &mut RenderPass<'a>) {}
 }

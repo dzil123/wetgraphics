@@ -31,7 +31,7 @@ impl Window {
             mainloop.event(&event);
 
             match event {
-                Event::RedrawRequested(_) => {
+                Event::RedrawRequested(window_id) if window_id == window.id() => {
                     // let should_close = mainloop.render();
                     // if should_close {
                     //     *control_flow = ControlFlow::Exit
@@ -66,6 +66,9 @@ impl Window {
                         _ => {}
                     }
                 }
+                Event::RedrawRequested(_) | Event::WindowEvent { .. } => {
+                    panic!("invalid window_id {:#?}", event)
+                }
                 _ => {}
             }
         })
@@ -76,6 +79,7 @@ impl SafeWgpuSurface for WinitWindow {
     fn create_surface(&self, instance: &wgpu::Instance) -> wgpu::Surface {
         // SAFETY: this is always safe for a valid winit::Window,
         // as long as the winit::Window is alive for as long as the wgpu surface/swapchain exists
+        // https://github.com/gfx-rs/wgpu-rs/issues/674
         unsafe { instance.create_surface(self) }
     }
 }

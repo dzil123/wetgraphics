@@ -50,7 +50,7 @@ impl<'a> Imgui<'a> {
         }
     }
 
-    fn event(&mut self, event: &Event<'_, ()>) -> Option<()> {
+    pub fn event(&mut self, event: &Event<'_, ()>) -> Option<()> {
         self.platform
             .handle_event(self.context.get()?.io_mut(), self.window, event);
         Some(())

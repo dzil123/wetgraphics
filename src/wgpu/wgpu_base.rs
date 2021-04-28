@@ -90,15 +90,15 @@ impl WgpuBase {
         (this, surface)
     }
 
-    pub fn render<T>(&self, texture: &TextureView, func: T)
+    pub fn render<T>(&self, texture: &TextureView, target: &mut T)
     where
-        T: FnOnce(&Self, RenderPass<'_>),
+        T: WgpuBaseRender,
     {
         let mut encoder = self.device.create_command_encoder(&Default::default());
 
         {
             let mut render_pass = begin_render_pass(&mut encoder, texture);
-            func(self, render_pass);
+            target.render(self, &mut render_pass);
         }
 
         self.queue.submit(iter::once(encoder.finish()));
@@ -110,3 +110,11 @@ impl WgpuBase {
 }
 
 // for<'b> https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=337720452d4fa161323fb2939ee23af1
+
+pub trait WgpuBaseRender {
+    fn render<'a>(&'a mut self, wgpu_base: &WgpuBase, render_pass: &mut RenderPass<'a>);
+}
+
+impl WgpuBaseRender for () {
+    fn render<'a>(&'a mut self, _: &WgpuBase, _: &mut RenderPass<'a>) {}
+}
