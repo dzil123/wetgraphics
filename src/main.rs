@@ -25,8 +25,16 @@ mod util;
 mod wgpu;
 mod window;
 
+const COLORS: [[f32; 3]; 4] = [
+    [0.0, 0.0, 0.0],
+    [1.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0],
+    [0.0, 0.0, 1.0],
+];
+
 struct State {
     render_pipeline: RenderPipeline,
+    color_index: usize,
 }
 
 // todo: add parameter for textureformat, then create CreateFromWgpuWindowed that gets the format from swapchain_desc
@@ -71,7 +79,10 @@ impl CreateFromWgpu for State {
             multisample: Default::default(),
         });
 
-        Self { render_pipeline }
+        Self {
+            render_pipeline,
+            color_index: 0,
+        }
     }
 }
 
@@ -98,10 +109,11 @@ fn vec4(x: [f32; 4]) -> [u8; 4 * 4] {
 
 impl WgpuWindowedRender for State {
     fn render<'a>(&'a mut self, _: &WgpuWindowed<'_>, render_pass: &mut RenderPass<'a>) {
-        let color: [f32; 3] = [0.0, 0.5, 1.0];
+        let color: [f32; 3] = COLORS[self.color_index];
+        self.color_index = (self.color_index + 1) % COLORS.len();
+        // bytemuck might break on big endian machines
 
         render_pass.set_pipeline(&self.render_pipeline);
-        // render_pass.set_push_constants(ShaderStage::all(), 0, &vec4([0.0, 0.5, 1.0, 1.0]));
         render_pass.set_push_constants(ShaderStage::all(), 0, bytes_of(&color));
         render_pass.draw(0..3, 0..1);
     }
@@ -128,6 +140,9 @@ where
         Self { wgpu_window, state }
     }
 }
+
+// todo: create a trait (&self) -> (width, height:u32, format: TextureFormat) and impl for wgpu::SwapChainDescriptor
+// to genericize rendering to swapchain or texture
 
 impl<'a, T> Mainloop for WgpuWindowMainloop<'a, T>
 where

@@ -40,7 +40,6 @@ fn create_adapter(instance: Instance, surface: Option<&Surface>) -> (Instance, A
         })
         .block_on()
         .unwrap();
-    dbg!(adapter.get_info());
     (instance, adapter)
 }
 

@@ -70,6 +70,7 @@ impl Window {
                 }
                 _ => {}
             }
+            // *control_flow = ControlFlow::Exit;
         })
     }
 }

@@ -9,5 +9,11 @@ layout( push_constant ) uniform _ {
 
 void main() {
 //    f_color = vec4(0.3, 0.2, 0.1, 1.0);
-    f_color = vec4(PushConstants.color, 1.0);
+//    f_color = vec4(PushConstants.color, 1.0);
+//    f_color = gl_FragCoord / vec4(vec2(1000.0), vec2(1.0));
+    float x = uv.x / gl_FragCoord.x;
+    float y = (1.0 - uv.y) / gl_FragCoord.y;
+    float aspect = x / y;
+
+    f_color = vec4(vec3(aspect), 1.0);
 }
