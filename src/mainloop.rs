@@ -4,7 +4,7 @@ use winit::event::{Event, WindowEvent};
 pub trait Mainloop {
     fn event(&mut self, _event: &Event<'_, ()>) {}
     fn input(&mut self, _event: &WindowEvent<'_>) {}
-    fn render<'a>(&'a mut self) {}
+    fn render(&mut self) {}
     // fn render(&mut self) -> bool {
     //     false
     // }

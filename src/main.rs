@@ -152,7 +152,7 @@ where
 
     fn input(&mut self, _event: &WindowEvent<'_>) {}
 
-    fn render<'x>(&'x mut self) {
+    fn render(&mut self) {
         self.wgpu_window.render(&mut self.state);
     }
 
@@ -214,7 +214,7 @@ where
         }
     }
 
-    fn render<'x>(&'x mut self) {
+    fn render(&mut self) {
         self.wgpu_window
             .render(&mut self.imgui.partial_render(&mut self.state));
     }

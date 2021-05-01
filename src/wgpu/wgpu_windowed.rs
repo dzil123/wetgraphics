@@ -1,15 +1,18 @@
-use wgpu::RenderPass;
+use wgpu::{
+    PresentMode, RenderPass, Surface, SwapChain, SwapChainDescriptor, SwapChainError,
+    TextureFormat, TextureUsage,
+};
 use winit::window::Window;
 
-use super::wgpu_base::WgpuBase;
+use super::wgpu_base::{WgpuBase, WgpuBaseRender};
 use crate::util::WindowSize;
 
 // should this store window?
 pub struct WgpuWindowed<'a> {
     pub base: WgpuBase,
-    pub surface: wgpu::Surface,
-    pub swap_chain_desc: wgpu::SwapChainDescriptor,
-    pub swap_chain: wgpu::SwapChain,
+    pub surface: Surface,
+    pub swap_chain_desc: SwapChainDescriptor,
+    pub swap_chain: SwapChain,
     pub window: &'a Window,
 }
 
@@ -19,13 +22,13 @@ impl<'a> WgpuWindowed<'a> {
 
         let size = window.inner_size();
 
-        let swap_chain_desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8Unorm, // adapter.get_swap_chain_preferred_format? // srgb causes linear colors passed in as push constants to be incorrectly lightened
+        let swap_chain_desc = SwapChainDescriptor {
+            usage: TextureUsage::RENDER_ATTACHMENT,
+            format: TextureFormat::Bgra8Unorm, // adapter.get_swap_chain_preferred_format? // srgb causes linear colors passed in as push constants to be incorrectly lightened
             width: size.width,
             height: size.height,
-            present_mode: wgpu::PresentMode::Fifo,
-            // present_mode: wgpu::PresentMode::Immediate, // this setting causes imgui to freak out, it thinks time is going super fast, probably because it thinks 60fps and has no other clock
+            present_mode: PresentMode::Fifo,
+            // present_mode: PresentMode::Immediate, // this setting causes imgui to freak out, it thinks time is going super fast, probably because it thinks 60fps and has no other clock
         };
         let swap_chain = base.device.create_swap_chain(&surface, &swap_chain_desc);
 
@@ -58,8 +61,8 @@ impl<'a> WgpuWindowed<'a> {
             Ok(frame) => frame.output,
             Err(err) => {
                 return match err {
-                    wgpu::SwapChainError::Lost => self.resize(None),
-                    wgpu::SwapChainError::OutOfMemory => panic!("{}", err),
+                    SwapChainError::Lost => self.resize(None),
+                    SwapChainError::OutOfMemory => panic!("{}", err),
                     _ => {}
                 }
             }
@@ -79,7 +82,7 @@ struct HelperRenderTarget<'a, T> {
     inner: &'a mut T,
 }
 
-impl<'a, T> super::wgpu_base::WgpuBaseRender for HelperRenderTarget<'a, T>
+impl<'a, T> WgpuBaseRender for HelperRenderTarget<'a, T>
 where
     T: WgpuWindowedRender,
 {
