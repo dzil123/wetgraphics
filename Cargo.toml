@@ -13,7 +13,6 @@ phf = "0.8"
 pollster = "0.2"
 wgpu = "0.7"
 wgpu-subscriber = "0.1"
-#winit = "0.24"
 winit = { version = "0.24", default-features = false, features = ["x11"] }
 
 [patch.crates-io]
