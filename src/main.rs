@@ -1,6 +1,8 @@
 #![allow(unused_variables, unreachable_code, dead_code, unused_imports)]
 #![deny(rust_2018_idioms)]
 
+use std::time::Duration;
+
 use ::wgpu::{
     util::RenderEncoder, BlendState, ColorTargetState, ColorWrite, CullMode, FragmentState,
     PipelineLayoutDescriptor, PrimitiveState, PushConstantRange, RenderPass, RenderPipeline,
@@ -207,11 +209,19 @@ where
         } = event
         {
             match key {
-                VirtualKeyCode::S => self.imgui.base.suspend(),
-                VirtualKeyCode::E => self.imgui.base.enable(),
+                // VirtualKeyCode::S => self.imgui.base.suspend(),
+                // VirtualKeyCode::E => self.imgui.base.enable(),
                 _ => {}
             }
         }
+    }
+
+    fn update(&mut self, delta: Duration) {
+        self.imgui
+            .base
+            .context
+            .get()
+            .map(|context| context.io_mut().update_delta_time(delta));
     }
 
     fn render(&mut self) {

@@ -28,7 +28,7 @@ impl<'a> WgpuWindowed<'a> {
             width: size.width,
             height: size.height,
             present_mode: PresentMode::Fifo,
-            // present_mode: PresentMode::Immediate, // this setting causes imgui to freak out, it thinks time is going super fast, probably because it thinks 60fps and has no other clock
+            // present_mode: PresentMode::Immediate,
         };
         let swap_chain = base.device.create_swap_chain(&surface, &swap_chain_desc);
 

@@ -67,6 +67,8 @@ impl WgpuBase {
             .block_on()
             .unwrap();
 
+        device.on_uncaptured_error(|err| eprintln!("{:#?}", err));
+
         Self {
             instance,
             adapter,

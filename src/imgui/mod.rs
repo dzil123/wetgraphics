@@ -1,3 +1,4 @@
+mod clipboard;
 mod imgui_wgpu;
 mod imgui_windowed;
 

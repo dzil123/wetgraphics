@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -25,15 +27,20 @@ impl Window {
     where
         T: Mainloop,
     {
+        let mut last_frame = Instant::now();
+
         self.event_loop.run_return(move |event, _, control_flow| {
             mainloop.event(&event);
 
             match event {
+                Event::NewEvents(_) => {
+                    let new_frame = Instant::now();
+                    let delta_time = new_frame - last_frame;
+                    last_frame = new_frame;
+
+                    mainloop.update(delta_time);
+                }
                 Event::RedrawRequested(window_id) if window_id == window.id() => {
-                    // let should_close = mainloop.render();
-                    // if should_close {
-                    //     *control_flow = ControlFlow::Exit
-                    // }
                     mainloop.render();
                 }
                 Event::MainEventsCleared => {
@@ -41,6 +48,7 @@ impl Window {
                 }
                 Event::WindowEvent { event, window_id } if window_id == window.id() => {
                     mainloop.input(&event); // todo find way to apply ignore_keyboard() to this
+
                     match event {
                         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                         WindowEvent::Resized(size)

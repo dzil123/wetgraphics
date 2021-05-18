@@ -40,6 +40,10 @@ impl<'a> Imgui<'a> {
         let mut context = Context::create();
         context.set_ini_filename(None);
 
+        if let Some(clipboard) = super::clipboard::init() {
+            context.set_clipboard_backend(Box::new(clipboard));
+        }
+
         let mut platform = WinitPlatform::init(&mut context);
         platform.attach_window(context.io_mut(), &window, HiDpiMode::Rounded);
 
