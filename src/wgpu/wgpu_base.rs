@@ -3,7 +3,7 @@ use std::iter;
 use pollster::FutureExt as _;
 use wgpu::{
     Adapter, BackendBit, Color, CommandEncoder, Device, Features, Instance, Limits, LoadOp,
-    Operations, PowerPreference, Queue, RenderPass, RenderPassColorAttachmentDescriptor,
+    Operations, PowerPreference, Queue, RenderPass, RenderPassColorAttachment,
     RenderPassDescriptor, RequestAdapterOptions, ShaderModule, Surface, TextureView,
 };
 
@@ -15,13 +15,10 @@ fn begin_render_pass<'a>(
     texture: &'a TextureView,
 ) -> RenderPass<'a> {
     encoder.begin_render_pass(&RenderPassDescriptor {
-        color_attachments: &[RenderPassColorAttachmentDescriptor {
-            attachment: texture,
+        color_attachments: &[RenderPassColorAttachment {
+            view: texture,
             resolve_target: None,
-            ops: Operations {
-                load: LoadOp::Clear(Color::BLACK),
-                ..Default::default()
-            },
+            ops: Default::default(),
         }],
         ..Default::default()
     })

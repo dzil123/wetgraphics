@@ -4,7 +4,7 @@
 use std::time::Duration;
 
 use ::wgpu::{
-    util::RenderEncoder, BlendState, ColorTargetState, ColorWrite, CullMode, FragmentState,
+    util::RenderEncoder, BlendState, ColorTargetState, ColorWrite, Face, FragmentState,
     PipelineLayoutDescriptor, PrimitiveState, PushConstantRange, RenderPass, RenderPipeline,
     RenderPipelineDescriptor, ShaderStage, TextureFormat, VertexState,
 };
@@ -68,13 +68,12 @@ impl CreateFromWgpu for State {
                 entry_point: "main",
                 targets: &[ColorTargetState {
                     format: TextureFormat::Bgra8Unorm, // todo get from wgpu_windowed.swapchain_desc? // update: it crashes if it isnt lol
-                    alpha_blend: BlendState::REPLACE,
-                    color_blend: BlendState::REPLACE,
+                    blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrite::ALL,
                 }],
             }),
             primitive: PrimitiveState {
-                cull_mode: CullMode::Back,
+                cull_mode: Some(Face::Back),
                 ..Default::default()
             },
             depth_stencil: None,
