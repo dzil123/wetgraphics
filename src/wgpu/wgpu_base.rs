@@ -2,9 +2,9 @@ use std::iter;
 
 use pollster::FutureExt as _;
 use wgpu::{
-    Adapter, BackendBit, Color, CommandEncoder, Device, Features, Instance, Limits, LoadOp,
-    Operations, PowerPreference, Queue, RenderPass, RenderPassColorAttachment,
-    RenderPassDescriptor, RequestAdapterOptions, ShaderModule, Surface, TextureView,
+    Adapter, BackendBit, CommandEncoder, Device, Features, Instance, Limits, PowerPreference,
+    Queue, RenderPass, RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions,
+    ShaderModule, Surface, TextureView,
 };
 
 use crate::util::SafeWgpuSurface;

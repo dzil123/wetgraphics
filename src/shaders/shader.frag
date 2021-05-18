@@ -15,5 +15,7 @@ void main() {
     float y = (1.0 - uv.y) / gl_FragCoord.y;
     float aspect = x / y;
 
-    f_color = vec4(vec3(aspect), 1.0);
+//    f_color = vec4(vec3(aspect), 1.0);
+
+    f_color = vec4(uv, 0.0, uv.x);
 }

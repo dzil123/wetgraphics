@@ -1,4 +1,4 @@
-use std::mem::{replace, swap};
+use std::mem::replace;
 
 use imgui::{Context, DrawData, FontConfig, FontSource, SuspendedContext, Ui};
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
