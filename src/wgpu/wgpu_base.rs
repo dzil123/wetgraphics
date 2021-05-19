@@ -4,9 +4,9 @@ use pollster::FutureExt as _;
 use wgpu::{
     util::DeviceExt, Adapter, BackendBit, BindGroupDescriptor, BindGroupEntry,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, CommandEncoder,
-    Device, Features, Instance, Limits, LoadOp, Operations, PowerPreference, Queue, RenderPass,
+    Device, Features, Instance, Limits, PowerPreference, Queue, RenderPass,
     RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, ShaderModule,
-    ShaderStage, Surface, TextureDescriptor, TextureSampleType, TextureView,
+    ShaderStage, Surface, TextureDescriptor, TextureView,
 };
 
 use crate::util::{
@@ -117,7 +117,7 @@ impl WgpuBase {
         sampler: SamplerDesc,
         data: Option<&[u8]>,
     ) -> TextureResult {
-        let mut vec = Vec::<u8>::new();
+        let mut vec = Vec::new();
 
         let data = data.unwrap_or_else(|| {
             vec.resize(texture_size(desc), 0);
@@ -129,7 +129,7 @@ impl WgpuBase {
             .create_texture_with_data(&self.queue, desc, data);
 
         let view = texture.create_view(&Default::default());
-        let sampler = self.device.create_sampler(&sampler.into());
+        let sampler = self.device.create_sampler(&sampler.into()); // todo: reuse samplers, bind group layouts?
 
         let bind_layout = self
             .device
@@ -141,7 +141,7 @@ impl WgpuBase {
                         ty: BindingType::Texture {
                             multisampled: false,
                             view_dimension: texture_view_dimension(&desc),
-                            sample_type: TextureSampleType::Uint, // todo!!!!
+                            sample_type: desc.format.describe().sample_type, // it seems to not work with anything else, even though vulkan says any type is 'compatible' https://www.khronos.org/registry/vulkan/specs/1.2/html/chap33.html#formats-compatibility-classes
                         },
                         count: None,
                     },

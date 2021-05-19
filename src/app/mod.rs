@@ -1,14 +1,10 @@
-use bytemuck::bytes_of;
 use wgpu::{
-    util::DeviceExt, BindGroup, BindGroupEntry, BindGroupLayoutEntry, BindingResource, BindingType,
-    BlendState, ColorTargetState, ColorWrite, Face, FilterMode, FragmentState,
-    PipelineLayoutDescriptor, PrimitiveState, PushConstantRange, RenderPass, RenderPipeline,
-    RenderPipelineDescriptor, Sampler, SamplerDescriptor, ShaderStage, Texture, TextureDescriptor,
-    TextureDimension, TextureFormat, TextureSampleType, TextureUsage, TextureView,
-    TextureViewDimension, VertexState,
+    BindGroup, BlendState, ColorTargetState, ColorWrite, Face, FragmentState,
+    PipelineLayoutDescriptor, PrimitiveState, RenderPass, RenderPipeline, RenderPipelineDescriptor,
+    TextureUsage, VertexState,
 };
 
-use crate::util::{texture_view_dimension, CreateFromWgpu, TextureResult};
+use crate::util::{texture_size, CreateFromWgpu, TextureResult};
 use crate::wgpu::{WgpuBase, WgpuWindowed, WgpuWindowedRender};
 use crate::{imgui::ImguiWgpuRender, util::TextureDesc};
 
@@ -22,31 +18,32 @@ const COLORS: [[f32; 3]; 4] = [
 pub struct App {
     render_pipeline: RenderPipeline,
     color_index: usize,
-    // texture: Texture,
-    // texture_view: TextureView,
-    // texture_sampler: Sampler,
     texture_bind_group: BindGroup,
 }
 
 impl CreateFromWgpu for App {
     fn new(wgpu_base: &WgpuBase, desc: &TextureDesc) -> Self {
+        let desc = TextureDesc {
+            width: 200,
+            height: 200,
+            format: desc.format,
+        };
+        let desc = desc.into_2d(TextureUsage::COPY_DST | TextureUsage::SAMPLED);
+
         let device = &wgpu_base.device;
 
-        let num_bytes = 4 * desc.width * desc.height;
-        let data = vec![0; num_bytes as usize];
-
+        let num_bytes = texture_size(&desc);
         let data: Vec<u8> = (0..num_bytes).into_iter().map(|x| (x * 85) as _).collect();
 
-        let data2: Vec<u8> = std::iter::repeat([255, 0, 0, 255].iter())
+        let data2: Vec<u8> = std::iter::repeat([0, 255, 0, 255].iter())
             .flatten()
             .map(|&x| x)
             .take(num_bytes as _)
             .collect();
 
-        let desc = desc.into_2d(TextureUsage::COPY_DST | TextureUsage::SAMPLED);
         let TextureResult {
             bind_layout, bind, ..
-        } = wgpu_base.texture(&desc, Default::default(), Some(&data2));
+        } = wgpu_base.texture(&desc, Default::default(), Some(&data));
 
         let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: None,
@@ -83,9 +80,6 @@ impl CreateFromWgpu for App {
         Self {
             render_pipeline,
             color_index: 0,
-            // texture,
-            // texture_view,
-            // texture_sampler,
             texture_bind_group: bind,
         }
     }

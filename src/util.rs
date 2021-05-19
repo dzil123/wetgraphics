@@ -1,7 +1,7 @@
 use wgpu::{
     AddressMode, BindGroup, BindGroupLayout, Extent3d, FilterMode, Instance, Sampler,
     SamplerDescriptor, Surface, SwapChainDescriptor, Texture, TextureDescriptor, TextureDimension,
-    TextureFormat, TextureUsage, TextureView, TextureViewDescriptor, TextureViewDimension,
+    TextureFormat, TextureUsage, TextureView, TextureViewDimension,
 };
 
 use crate::wgpu::WgpuBase;
@@ -16,6 +16,7 @@ pub trait CreateFromWgpu {
     fn new(wgpu_base: &WgpuBase, desc: &TextureDesc) -> Self;
 }
 
+#[derive(Clone)]
 pub struct TextureDesc {
     pub width: u32,
     pub height: u32,
@@ -107,6 +108,7 @@ pub fn texture_view_dimension(desc: &TextureDescriptor<'_>) -> TextureViewDimens
     }
 }
 
+// wgpu does implicit Arc<> semantics in the background, so eg everything can be dropped but BindGroup will remain valid
 pub struct TextureResult {
     pub texture: Texture,
     pub view: TextureView,
@@ -128,21 +130,3 @@ pub fn texture_size(desc: &TextureDescriptor<'_>) -> usize {
         * (size.height as usize)
         * (size.depth_or_array_layers as usize)
 }
-
-// impl From<&TextureDesc> for TextureDescriptor<'static> {
-//     fn from(desc: &TextureDesc) -> Self {
-//         TextureDescriptor {
-//             label: None,
-//             size: Extent3d {
-//                 width: desc.width,
-//                 height: desc.height,
-//                 depth_or_array_layers: 1,
-//             },
-//             mip_level_count: 1,
-//             sample_count: 1,
-//             dimension: wgpu::TextureDimension::D2,
-//             format: desc.format,
-//             usage: TextureUsage::empty(), // expected to be overwritten
-//         }
-//     }
-// }

@@ -1,4 +1,5 @@
 mod wgpu_imgui;
+mod wgpu_plain;
 
 use std::time::Duration;
 
@@ -6,6 +7,7 @@ use crate::util::WindowSize;
 use winit::event::{Event, WindowEvent};
 
 pub use wgpu_imgui::WgpuImguiWindowMainloop;
+pub use wgpu_plain::WgpuWindowMainloop;
 
 pub trait Mainloop {
     fn event(&mut self, _event: &Event<'_, ()>) {}
