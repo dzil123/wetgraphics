@@ -104,6 +104,10 @@ where
     ) {
         self.imgui.render(wgpu_windowed, render_pass, self.inner);
     }
+
+    fn render2(&mut self, wgpu_windowed: &WgpuWindowed<'_>, encoder: &mut wgpu::CommandEncoder) {
+        self.inner.render2(wgpu_windowed, encoder);
+    }
 }
 
 pub trait ImguiWgpuRender {

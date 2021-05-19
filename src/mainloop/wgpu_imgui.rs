@@ -25,7 +25,7 @@ where
     pub fn new(window: &'a Window) -> Self {
         let wgpu_window = WgpuWindowed::new(window);
         let imgui = ImguiWgpu::new(window, &wgpu_window);
-        let state = T::new(&wgpu_window.base);
+        let state = T::new(&wgpu_window.base, &wgpu_window.desc());
         Self {
             wgpu_window,
             imgui,

@@ -2,12 +2,16 @@ use std::iter;
 
 use pollster::FutureExt as _;
 use wgpu::{
-    Adapter, BackendBit, CommandEncoder, Device, Features, Instance, Limits, PowerPreference,
-    Queue, RenderPass, RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions,
-    ShaderModule, Surface, TextureView,
+    util::DeviceExt, Adapter, BackendBit, BindGroupDescriptor, BindGroupEntry,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, CommandEncoder,
+    Device, Features, Instance, Limits, LoadOp, Operations, PowerPreference, Queue, RenderPass,
+    RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, ShaderModule,
+    ShaderStage, Surface, TextureDescriptor, TextureSampleType, TextureView,
 };
 
-use crate::util::SafeWgpuSurface;
+use crate::util::{
+    texture_size, texture_view_dimension, SafeWgpuSurface, SamplerDesc, TextureResult,
+};
 
 // simple render pass that only clears the frame to black. ignore if using depth buffer, not clearing frame, or anything more complex
 fn begin_render_pass<'a>(
@@ -64,7 +68,7 @@ impl WgpuBase {
             .block_on()
             .unwrap();
 
-        device.on_uncaptured_error(|err| eprintln!("{:#?}", err));
+        // device.on_uncaptured_error(|err| eprintln!("{:#?}", err));
 
         Self {
             instance,
@@ -93,6 +97,7 @@ impl WgpuBase {
         T: WgpuBaseRender,
     {
         let mut encoder = self.device.create_command_encoder(&Default::default());
+        target.render2(self, &mut encoder);
 
         {
             let mut render_pass = begin_render_pass(&mut encoder, texture);
@@ -105,10 +110,82 @@ impl WgpuBase {
     pub fn shader(&self, name: &str) -> ShaderModule {
         crate::shaders::load(&self.device, name)
     }
+
+    pub fn texture(
+        &self,
+        desc: &TextureDescriptor<'_>,
+        sampler: SamplerDesc,
+        data: Option<&[u8]>,
+    ) -> TextureResult {
+        let mut vec = Vec::<u8>::new();
+
+        let data = data.unwrap_or_else(|| {
+            vec.resize(texture_size(desc), 0);
+            &vec
+        });
+
+        let texture = self
+            .device
+            .create_texture_with_data(&self.queue, desc, data);
+
+        let view = texture.create_view(&Default::default());
+        let sampler = self.device.create_sampler(&sampler.into());
+
+        let bind_layout = self
+            .device
+            .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStage::all(),
+                        ty: BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: texture_view_dimension(&desc),
+                            sample_type: TextureSampleType::Uint, // todo!!!!
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStage::all(),
+                        ty: BindingType::Sampler {
+                            comparison: false,
+                            filtering: true,
+                        },
+                        count: None,
+                    },
+                ],
+                label: None,
+            });
+
+        let bind = self.device.create_bind_group(&BindGroupDescriptor {
+            layout: &bind_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&sampler),
+                },
+            ],
+            label: None,
+        });
+
+        TextureResult {
+            texture,
+            view,
+            sampler,
+            bind_layout,
+            bind,
+        }
+    }
 }
 
 // for<'b> https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=337720452d4fa161323fb2939ee23af1
 
 pub trait WgpuBaseRender {
     fn render<'a>(&'a mut self, wgpu_base: &WgpuBase, render_pass: &mut RenderPass<'a>);
+    fn render2(&mut self, wgpu_base: &WgpuBase, encoder: &mut CommandEncoder) {}
 }

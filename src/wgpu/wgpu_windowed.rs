@@ -1,11 +1,11 @@
 use wgpu::{
-    PresentMode, RenderPass, Surface, SwapChain, SwapChainDescriptor, SwapChainError,
-    TextureFormat, TextureUsage,
+    CommandEncoder, PresentMode, RenderPass, Surface, SwapChain, SwapChainDescriptor,
+    SwapChainError, TextureFormat, TextureUsage,
 };
 use winit::window::Window;
 
 use super::wgpu_base::{WgpuBase, WgpuBaseRender};
-use crate::util::WindowSize;
+use crate::util::{TextureDesc, WindowSize};
 
 // should this store window?
 pub struct WgpuWindowed<'a> {
@@ -39,6 +39,11 @@ impl<'a> WgpuWindowed<'a> {
             swap_chain,
             window,
         }
+    }
+
+    // warning: does not update with resizes
+    pub fn desc(&self) -> TextureDesc {
+        (&self.swap_chain_desc).into()
     }
 
     pub fn resize(&mut self, size: Option<WindowSize>) {
@@ -87,15 +92,15 @@ where
     T: WgpuWindowedRender,
 {
     fn render<'b>(&'b mut self, _: &WgpuBase, render_pass: &mut RenderPass<'b>) {
-        let Self {
-            wgpu_windowed,
-            inner,
-        } = self;
+        self.inner.render(self.wgpu_windowed, render_pass);
+    }
 
-        inner.render(wgpu_windowed, render_pass);
+    fn render2(&mut self, _: &WgpuBase, encoder: &mut CommandEncoder) {
+        self.inner.render2(self.wgpu_windowed, encoder);
     }
 }
 
 pub trait WgpuWindowedRender {
     fn render<'a>(&'a mut self, wgpu_windowed: &WgpuWindowed<'_>, render_pass: &mut RenderPass<'a>);
+    fn render2(&mut self, wgpu_windowed: &WgpuWindowed<'_>, encoder: &mut CommandEncoder) {}
 }
