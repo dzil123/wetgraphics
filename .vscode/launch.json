@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'wetgraphics'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=wetgraphics",
+                    "--package=wetgraphics"
+                ],
+                "filter": {
+                    "name": "wetgraphics",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

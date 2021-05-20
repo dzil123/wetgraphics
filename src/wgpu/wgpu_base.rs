@@ -4,7 +4,7 @@ use pollster::FutureExt as _;
 use wgpu::{
     util::DeviceExt, Adapter, BackendBit, BindGroupDescriptor, BindGroupEntry,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, CommandEncoder,
-    Device, Features, Instance, Limits, PowerPreference, Queue, RenderPass,
+    Device, DeviceDescriptor, Features, Instance, Limits, PowerPreference, Queue, RenderPass,
     RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, ShaderModule,
     ShaderStage, Surface, TextureDescriptor, TextureView,
 };
@@ -55,7 +55,7 @@ impl WgpuBase {
     fn new_impl((instance, adapter): (Instance, Adapter)) -> Self {
         let (device, queue) = adapter
             .request_device(
-                &wgpu::DeviceDescriptor {
+                &DeviceDescriptor {
                     features: Features::PUSH_CONSTANTS,
                     limits: Limits {
                         max_push_constant_size: 128, // i have it on good authority that this is the max for a rx 580 and igpu

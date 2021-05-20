@@ -36,7 +36,7 @@ impl TextureDesc {
             sample_count: 1,
             dimension: TextureDimension::D2,
             format: self.format,
-            usage,
+            usage: usage | TextureUsage::COPY_DST, // always written by wgpu_base.texture()  // todo: replace with self.format.describe().guaranteed_format_features.allowed_usages?
         }
     }
 

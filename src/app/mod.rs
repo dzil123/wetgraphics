@@ -1,7 +1,7 @@
 use wgpu::{
     BindGroup, BlendState, ColorTargetState, ColorWrite, Face, FragmentState,
     PipelineLayoutDescriptor, PrimitiveState, RenderPass, RenderPipeline, RenderPipelineDescriptor,
-    TextureUsage, VertexState,
+    TextureFormat, TextureUsage, VertexState,
 };
 
 use crate::util::{texture_size, CreateFromWgpu, TextureResult};
@@ -22,11 +22,11 @@ pub struct App {
 }
 
 impl CreateFromWgpu for App {
-    fn new(wgpu_base: &WgpuBase, desc: &TextureDesc) -> Self {
+    fn new(wgpu_base: &WgpuBase, swapchain_desc: &TextureDesc) -> Self {
         let desc = TextureDesc {
             width: 200,
             height: 200,
-            format: desc.format,
+            format: TextureFormat::R8Unorm,
         };
         let desc = desc.into_2d(TextureUsage::COPY_DST | TextureUsage::SAMPLED);
 
@@ -64,7 +64,7 @@ impl CreateFromWgpu for App {
                 module: &wgpu_base.shader("shader.frag"),
                 entry_point: "main",
                 targets: &[ColorTargetState {
-                    format: desc.format,
+                    format: swapchain_desc.format,
                     blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrite::ALL,
                 }],
