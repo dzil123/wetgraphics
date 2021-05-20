@@ -1,6 +1,6 @@
 use imgui::{DrawData, Ui};
 use imgui_wgpu::Renderer;
-use wgpu::RenderPass;
+use wgpu::{CommandEncoder, RenderPass};
 use winit::window::Window;
 
 use super::Imgui;
@@ -15,7 +15,7 @@ impl<'a> ImguiWgpu<'a> {
     pub fn new(window: &'a Window, wgpu_window: &WgpuWindowed<'_>) -> Self {
         let mut base = Imgui::new(window);
 
-        let format = wgpu_window.swap_chain_desc.format;
+        let format = wgpu_window.desc().format;
 
         let mut config = if format.describe().srgb {
             println!("chose srgb for imgui_wgpu");
@@ -105,8 +105,13 @@ where
         self.imgui.render(wgpu_windowed, render_pass, self.inner);
     }
 
-    fn render2(&mut self, wgpu_windowed: &WgpuWindowed<'_>, encoder: &mut wgpu::CommandEncoder) {
-        self.inner.render2(wgpu_windowed, encoder);
+    fn render_encoder(
+        &mut self,
+        wgpu_windowed: &WgpuWindowed<'_>,
+        encoder: &mut CommandEncoder,
+        after: bool,
+    ) {
+        self.inner.render_encoder(wgpu_windowed, encoder, after);
     }
 }
 

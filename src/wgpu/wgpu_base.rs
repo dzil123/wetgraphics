@@ -58,7 +58,7 @@ impl WgpuBase {
                 &DeviceDescriptor {
                     features: Features::PUSH_CONSTANTS,
                     limits: Limits {
-                        max_push_constant_size: 128, // i have it on good authority that this is the max for a rx 580 and igpu
+                        max_push_constant_size: 128,
                         ..Default::default()
                     },
                     ..Default::default()
@@ -97,13 +97,14 @@ impl WgpuBase {
         T: WgpuBaseRender,
     {
         let mut encoder = self.device.create_command_encoder(&Default::default());
-        target.render2(self, &mut encoder);
+        target.render_encoder(self, &mut encoder, false);
 
         {
             let mut render_pass = begin_render_pass(&mut encoder, texture);
             target.render(self, &mut render_pass);
         }
 
+        target.render_encoder(self, &mut encoder, true);
         self.queue.submit(iter::once(encoder.finish()));
     }
 
@@ -111,22 +112,27 @@ impl WgpuBase {
         crate::shaders::load(&self.device, name)
     }
 
+    // todo: only create sampler/bind when needed?
     pub fn texture(
         &self,
         desc: &TextureDescriptor<'_>,
         sampler: SamplerDesc,
-        data: Option<&[u8]>,
+        data: Option<Option<&[u8]>>,
     ) -> TextureResult {
-        let mut vec = Vec::new();
+        let texture = match data {
+            Some(data) => {
+                let mut vec = Vec::new();
 
-        let data = data.unwrap_or_else(|| {
-            vec.resize(texture_size(desc), 0);
-            &vec
-        });
+                let data = data.unwrap_or_else(|| {
+                    vec.resize(texture_size(desc), 0);
+                    &vec
+                });
 
-        let texture = self
-            .device
-            .create_texture_with_data(&self.queue, desc, data);
+                self.device
+                    .create_texture_with_data(&self.queue, desc, data)
+            }
+            None => self.device.create_texture(desc),
+        };
 
         let view = texture.create_view(&Default::default());
         let sampler = self.device.create_sampler(&sampler.into()); // todo: reuse samplers, bind group layouts?
@@ -187,5 +193,5 @@ impl WgpuBase {
 
 pub trait WgpuBaseRender {
     fn render<'a>(&'a mut self, wgpu_base: &WgpuBase, render_pass: &mut RenderPass<'a>);
-    fn render2(&mut self, wgpu_base: &WgpuBase, encoder: &mut CommandEncoder) {}
+    fn render_encoder(&mut self, wgpu_base: &WgpuBase, encoder: &mut CommandEncoder, after: bool);
 }

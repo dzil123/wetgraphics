@@ -1,7 +1,10 @@
+use std::num::NonZeroU32;
+
 use wgpu::{
-    AddressMode, BindGroup, BindGroupLayout, Extent3d, FilterMode, Instance, Sampler,
-    SamplerDescriptor, Surface, SwapChainDescriptor, Texture, TextureDescriptor, TextureDimension,
-    TextureFormat, TextureUsage, TextureView, TextureViewDimension,
+    AddressMode, BindGroup, BindGroupLayout, Extent3d, FilterMode, ImageDataLayout, Instance,
+    Sampler, SamplerDescriptor, Surface, SwapChainDescriptor, Texture, TextureDescriptor,
+    TextureDimension, TextureFormat, TextureUsage, TextureView, TextureViewDimension,
+    COPY_BYTES_PER_ROW_ALIGNMENT,
 };
 
 use crate::wgpu::WgpuBase;
@@ -24,7 +27,7 @@ pub struct TextureDesc {
 }
 
 impl TextureDesc {
-    pub fn into_2d(&self, usage: TextureUsage) -> TextureDescriptor<'_> {
+    pub fn into_2d(&self, usage: TextureUsage) -> TextureDescriptor<'static> {
         TextureDescriptor {
             label: None,
             size: Extent3d {
@@ -40,7 +43,7 @@ impl TextureDesc {
         }
     }
 
-    pub fn into_2d_array(&self, usage: TextureUsage, length: u32) -> TextureDescriptor<'_> {
+    pub fn into_2d_array(&self, usage: TextureUsage, length: u32) -> TextureDescriptor<'static> {
         let base = self.into_2d(usage);
 
         TextureDescriptor {
@@ -52,12 +55,21 @@ impl TextureDesc {
         }
     }
 
-    pub fn into_3d(&self, usage: TextureUsage, depth: u32) -> TextureDescriptor<'_> {
+    pub fn into_3d(&self, usage: TextureUsage, depth: u32) -> TextureDescriptor<'static> {
         let base = self.into_2d_array(usage, depth);
 
         TextureDescriptor {
             dimension: TextureDimension::D3,
             ..base
+        }
+    }
+
+    pub fn aligned(&self) -> Self {
+        let pixel_align = COPY_BYTES_PER_ROW_ALIGNMENT / (self.format.describe().block_size as u32);
+
+        Self {
+            width: (((self.width - 1) / pixel_align) + 1) * pixel_align,
+            ..self.clone()
         }
     }
 }
@@ -106,6 +118,52 @@ pub fn texture_view_dimension(desc: &TextureDescriptor<'_>) -> TextureViewDimens
         (TextureDimension::D2, _) => TextureViewDimension::D2,
         (TextureDimension::D3, _) => TextureViewDimension::D3,
     }
+}
+
+pub fn texture_image_layout(desc: &TextureDescriptor<'_>) -> ImageDataLayout {
+    let size = desc.size;
+
+    ImageDataLayout {
+        bytes_per_row: if size.height > 1 {
+            NonZeroU32::new(size.width * (desc.format.describe().block_size as u32))
+        } else {
+            None
+        },
+        rows_per_image: if size.depth_or_array_layers > 1 {
+            NonZeroU32::new(size.height)
+        } else {
+            None
+        },
+        ..Default::default()
+    }
+}
+
+pub fn to_image(data: &[u8], desc: &TextureDesc) -> image::ImageResult<image::DynamicImage> {
+    struct Decoder<'a> {
+        data: &'a [u8],
+        desc: &'a TextureDesc,
+    }
+
+    impl<'a> image::ImageDecoder<'a> for Decoder<'a> {
+        type Reader = &'a [u8];
+
+        fn dimensions(&self) -> (u32, u32) {
+            (self.desc.width, self.desc.height)
+        }
+
+        fn color_type(&self) -> image::ColorType {
+            match self.desc.format {
+                TextureFormat::Bgra8Unorm => image::ColorType::Bgra8,
+                _ => unimplemented!(),
+            }
+        }
+
+        fn into_reader(self) -> image::ImageResult<Self::Reader> {
+            Ok(self.data)
+        }
+    }
+
+    image::DynamicImage::from_decoder(Decoder { data, desc })
 }
 
 // wgpu does implicit Arc<> semantics in the background, so eg everything can be dropped but BindGroup will remain valid

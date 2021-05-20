@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 bytemuck = "1.5"
 clipboard = "0.5"
+image = { version = "0.23", default-features = false, features = ["png"] }
 imgui = "0.7"
 imgui-wgpu = "0.15"
 imgui-winit-support = { version = "0.7", default-features = false, features = ["winit-24"] }
@@ -20,6 +21,8 @@ winit = { version = "0.24", default-features = false, features = ["x11"] }
 imgui = { git = "https://github.com/dzil123/imgui-rs/", branch = "combined" }
 imgui-sys = { git = "https://github.com/dzil123/imgui-rs/", branch = "combined" }
 imgui-winit-support = { git = "https://github.com/dzil123/imgui-rs/", branch = "combined" }
+#wgpu-core = { path = "/home/daniel/ramdisk/wgpu/wgpu-core/" }
+#wgpu-types = { path = "/home/daniel/ramdisk/wgpu/wgpu-types/" }
 
 [build_dependencies]
 phf_codegen = "0.8"

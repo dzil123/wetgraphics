@@ -1,5 +1,5 @@
 use wgpu::{
-    BindGroup, BlendState, ColorTargetState, ColorWrite, Face, FragmentState,
+    BindGroup, BlendState, ColorTargetState, ColorWrite, CommandEncoder, Face, FragmentState,
     PipelineLayoutDescriptor, PrimitiveState, RenderPass, RenderPipeline, RenderPipelineDescriptor,
     TextureFormat, TextureUsage, VertexState,
 };
@@ -43,7 +43,7 @@ impl CreateFromWgpu for App {
 
         let TextureResult {
             bind_layout, bind, ..
-        } = wgpu_base.texture(&desc, Default::default(), Some(&data));
+        } = wgpu_base.texture(&desc, Default::default(), Some(Some(&data)));
 
         let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: None,
@@ -97,7 +97,13 @@ impl WgpuWindowedRender for App {
         render_pass.draw(0..3, 0..1);
     }
 
-    fn render2(&mut self, wgpu_windowed: &WgpuWindowed<'_>, encoder: &mut wgpu::CommandEncoder) {}
+    fn render_encoder(
+        &mut self,
+        wgpu_windowed: &WgpuWindowed<'_>,
+        encoder: &mut CommandEncoder,
+        after: bool,
+    ) {
+    }
 }
 
 impl ImguiWgpuRender for App {

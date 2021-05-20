@@ -13,9 +13,9 @@ use crate::CreateFromWgpu;
 use super::Mainloop;
 
 pub struct WgpuImguiWindowMainloop<'a, T> {
-    wgpu_window: WgpuWindowed<'a>,
-    imgui: ImguiWgpu<'a>,
-    state: T,
+    pub(super) wgpu_window: WgpuWindowed<'a>,
+    pub(super) imgui: ImguiWgpu<'a>,
+    pub(super) state: T,
 }
 
 impl<'a, T> WgpuImguiWindowMainloop<'a, T>

@@ -1,6 +1,6 @@
 use wgpu::{
     CommandEncoder, PresentMode, RenderPass, Surface, SwapChain, SwapChainDescriptor,
-    SwapChainError, TextureFormat, TextureUsage,
+    SwapChainError, SwapChainTexture, TextureFormat, TextureUsage,
 };
 use winit::window::Window;
 
@@ -58,20 +58,26 @@ impl<'a> WgpuWindowed<'a> {
             .create_swap_chain(&self.surface, &self.swap_chain_desc);
     }
 
-    pub fn render<T>(&mut self, target: &mut T)
-    where
-        T: WgpuWindowedRender,
-    {
-        let texture = match self.swap_chain.get_current_frame() {
-            Ok(frame) => frame.output,
+    // dropping this will present
+    pub fn next_frame(&mut self) -> Option<SwapChainTexture> {
+        match self.swap_chain.get_current_frame() {
+            Ok(frame) => Some(frame.output),
             Err(err) => {
-                return match err {
+                match err {
                     SwapChainError::Lost => self.resize(None),
                     SwapChainError::OutOfMemory => panic!("{}", err),
                     _ => {}
                 }
+                None
             }
-        };
+        }
+    }
+
+    pub fn render<T>(&mut self, target: &mut T) -> Option<()>
+    where
+        T: WgpuWindowedRender,
+    {
+        let texture = self.next_frame()?;
 
         let mut helper = HelperRenderTarget {
             wgpu_windowed: &self,
@@ -79,6 +85,7 @@ impl<'a> WgpuWindowed<'a> {
         };
 
         self.base.render(&texture.view, &mut helper);
+        Some(())
     }
 }
 
@@ -95,12 +102,18 @@ where
         self.inner.render(self.wgpu_windowed, render_pass);
     }
 
-    fn render2(&mut self, _: &WgpuBase, encoder: &mut CommandEncoder) {
-        self.inner.render2(self.wgpu_windowed, encoder);
+    fn render_encoder(&mut self, _: &WgpuBase, encoder: &mut CommandEncoder, after: bool) {
+        self.inner
+            .render_encoder(self.wgpu_windowed, encoder, after);
     }
 }
 
 pub trait WgpuWindowedRender {
     fn render<'a>(&'a mut self, wgpu_windowed: &WgpuWindowed<'_>, render_pass: &mut RenderPass<'a>);
-    fn render2(&mut self, wgpu_windowed: &WgpuWindowed<'_>, encoder: &mut CommandEncoder) {}
+    fn render_encoder(
+        &mut self,
+        wgpu_windowed: &WgpuWindowed<'_>,
+        encoder: &mut CommandEncoder,
+        after: bool,
+    );
 }
