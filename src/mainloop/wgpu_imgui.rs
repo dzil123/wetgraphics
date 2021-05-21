@@ -62,11 +62,9 @@ where
     }
 
     fn update(&mut self, delta: Duration) {
-        self.imgui
-            .base
-            .context
-            .get()
-            .map(|context| context.io_mut().update_delta_time(delta));
+        if let Some(context) = self.imgui.base.context.get() {
+            context.io_mut().update_delta_time(delta);
+        }
     }
 
     fn render(&mut self) {

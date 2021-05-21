@@ -5,7 +5,7 @@ authors = [ "dzil123 <5725958+dzil123@users.noreply.github.com>" ]
 edition = "2018"
 
 [dependencies]
-bytemuck = "1.5"
+bytemuck = {version = "1.5", features = ["derive"] }
 clipboard = "0.5"
 image = { version = "0.23", default-features = false, features = ["png"] }
 imgui = "0.7"

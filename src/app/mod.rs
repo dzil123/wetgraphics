@@ -1,12 +1,13 @@
+use bytemuck::{Pod, Zeroable};
 use wgpu::{
     BindGroup, BlendState, ColorTargetState, ColorWrite, CommandEncoder, Face, FragmentState,
-    PipelineLayoutDescriptor, PrimitiveState, RenderPass, RenderPipeline, RenderPipelineDescriptor,
-    TextureFormat, TextureUsage, VertexState,
+    PipelineLayoutDescriptor, PrimitiveState, PushConstantRange, RenderPass, RenderPipeline,
+    RenderPipelineDescriptor, ShaderStage, TextureFormat, TextureUsage, VertexState,
 };
 
-use crate::util::{texture_size, CreateFromWgpu, TextureResult};
+use crate::imgui::ImguiWgpuRender;
+use crate::util::{texture_size, CreateFromWgpu, TextureDesc, TextureResult};
 use crate::wgpu::{WgpuBase, WgpuWindowed, WgpuWindowedRender};
-use crate::{imgui::ImguiWgpuRender, util::TextureDesc};
 
 const COLORS: [[f32; 3]; 4] = [
     [0.0, 0.0, 0.0],
@@ -15,10 +16,38 @@ const COLORS: [[f32; 3]; 4] = [
     [0.0, 0.0, 1.0],
 ];
 
+#[derive(Default)]
+struct PushConstants {
+    width: u32,
+    pixels: u32,
+    front: bool,
+}
+
+impl PushConstants {
+    fn as_bytes(&self) -> [u8; 12] {
+        #[derive(Copy, Clone, Pod, Zeroable)]
+        #[repr(C)]
+        struct PushConstantsAligned {
+            width: u32,
+            pixels: u32,
+            front: u32,
+        }
+
+        let aligned = PushConstantsAligned {
+            width: self.width,
+            pixels: self.pixels,
+            front: self.front as _,
+        };
+
+        bytemuck::cast(aligned)
+    }
+}
+
 pub struct App {
     render_pipeline: RenderPipeline,
     color_index: usize,
     texture_bind_group: BindGroup,
+    push_constants: PushConstants,
 }
 
 impl CreateFromWgpu for App {
@@ -37,7 +66,7 @@ impl CreateFromWgpu for App {
 
         let data2: Vec<u8> = std::iter::repeat([0, 255, 0, 255].iter())
             .flatten()
-            .map(|&x| x)
+            .copied()
             .take(num_bytes as _)
             .collect();
 
@@ -49,10 +78,10 @@ impl CreateFromWgpu for App {
             label: None,
             layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
                 bind_group_layouts: &[&bind_layout],
-                // push_constant_ranges: &[PushConstantRange {
-                //     stages: ShaderStage::all(),
-                //     range: 0..(4 * 3),
-                // }],
+                push_constant_ranges: &[PushConstantRange {
+                    stages: ShaderStage::FRAGMENT,
+                    range: 0..(4 * 3),
+                }],
                 ..Default::default()
             })),
             vertex: VertexState {
@@ -81,6 +110,10 @@ impl CreateFromWgpu for App {
             render_pipeline,
             color_index: 0,
             texture_bind_group: bind,
+            push_constants: PushConstants {
+                front: true,
+                ..Default::default()
+            },
         }
     }
 }
@@ -92,7 +125,7 @@ impl WgpuWindowedRender for App {
         // bytemuck might break on big endian machines
 
         render_pass.set_pipeline(&self.render_pipeline);
-        // render_pass.set_push_constants(ShaderStage::all(), 0, bytes_of(&color));
+        render_pass.set_push_constants(ShaderStage::FRAGMENT, 0, &self.push_constants.as_bytes());
         render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
         render_pass.draw(0..3, 0..1);
     }
@@ -103,11 +136,32 @@ impl WgpuWindowedRender for App {
         encoder: &mut CommandEncoder,
         after: bool,
     ) {
+        self.push_constants.width = wgpu_windowed.desc().width;
     }
 }
 
 impl ImguiWgpuRender for App {
-    fn render_ui(&mut self, ui: &mut ::imgui::Ui<'_>) {
-        ui.show_demo_window(&mut false);
+    fn render_ui(&mut self, ui: &mut imgui::Ui<'_>) {
+        use imgui::{im_str, Drag, Window};
+
+        // ui.show_demo_window(&mut false);
+
+        let PushConstants {
+            width,
+            pixels,
+            front,
+        } = &mut self.push_constants;
+
+        Window::new(im_str!("App"))
+            .always_auto_resize(true)
+            .build(ui, || {
+                ui.push_item_width(70.0);
+                ui.label_text(im_str!("width"), &im_str!("{}", width));
+                Drag::new(im_str!("pixels"))
+                    .range(0..=*width)
+                    .speed(4.0)
+                    .build(ui, pixels);
+                ui.checkbox(im_str!("front"), front);
+            });
     }
 }
