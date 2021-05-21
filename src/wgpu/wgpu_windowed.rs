@@ -4,8 +4,9 @@ use wgpu::{
 };
 use winit::window::Window;
 
-use super::wgpu_base::{WgpuBase, WgpuBaseRender};
 use crate::util::{TextureDesc, WindowSize};
+
+use super::{WgpuBase, WgpuBaseRender};
 
 // should this store window?
 pub struct WgpuWindowed<'a> {
@@ -80,7 +81,7 @@ impl<'a> WgpuWindowed<'a> {
         let texture = self.next_frame()?;
 
         let mut helper = HelperRenderTarget {
-            wgpu_windowed: &self,
+            wgpu_windowed: self,
             inner: target,
         };
 

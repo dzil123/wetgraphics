@@ -1,9 +1,8 @@
 #![allow(unused_variables, unreachable_code, dead_code, unused_imports)]
 #![deny(rust_2018_idioms, private_in_public)]
 
-use mainloop::{WgpuImguiWindowMainloop, WgpuScreenshot, WgpuWindowMainloop};
-use util::CreateFromWgpu;
-
+use crate::mainloop::{WgpuImguiWindowMainloop, WgpuScreenshot, WgpuWindowMainloop};
+use crate::util::CreateFromWgpu;
 use crate::window::Window;
 
 mod app;

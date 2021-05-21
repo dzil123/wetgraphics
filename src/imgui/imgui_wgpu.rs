@@ -4,7 +4,7 @@ use wgpu::{CommandEncoder, RenderPass};
 use winit::window::Window;
 
 use super::Imgui;
-use crate::wgpu::{wgpu_windowed::WgpuWindowedRender, WgpuWindowed};
+use crate::wgpu::{WgpuWindowed, WgpuWindowedRender};
 
 pub struct ImguiWgpu<'a> {
     pub base: Imgui<'a>,

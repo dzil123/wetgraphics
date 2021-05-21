@@ -1,14 +1,13 @@
 use std::time::Duration;
 
 use winit::{
-    event::{ElementState, Event, KeyboardInput, WindowEvent},
+    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     window::Window,
 };
 
 use crate::imgui::{ImguiWgpu, ImguiWgpuRender};
-use crate::util::WindowSize;
+use crate::util::{CreateFromWgpu, WindowSize};
 use crate::wgpu::{WgpuWindowed, WgpuWindowedRender};
-use crate::CreateFromWgpu;
 
 use super::Mainloop;
 
@@ -42,22 +41,11 @@ where
         self.imgui.base.event(event);
     }
 
-    fn input(&mut self, event: &WindowEvent<'_>) {
-        if let WindowEvent::KeyboardInput {
-            input:
-                KeyboardInput {
-                    virtual_keycode: Some(key),
-                    state: ElementState::Pressed,
-                    ..
-                },
-            ..
-        } = event
-        {
-            match key {
-                // VirtualKeyCode::S => self.imgui.base.suspend(),
-                // VirtualKeyCode::E => self.imgui.base.enable(),
-                _ => {}
-            }
+    fn keyboard(&mut self, key: VirtualKeyCode) {
+        match key {
+            VirtualKeyCode::F5 => self.imgui.base.suspend(),
+            VirtualKeyCode::F6 => self.imgui.base.enable(),
+            _ => {}
         }
     }
 
@@ -81,7 +69,6 @@ where
             .base
             .context
             .get_ref()
-            .map(|imgui| imgui.io().want_capture_keyboard)
-            .unwrap_or(false)
+            .map_or(false, |imgui| imgui.io().want_capture_keyboard)
     }
 }

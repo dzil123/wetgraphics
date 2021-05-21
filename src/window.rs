@@ -7,7 +7,8 @@ use winit::{
     window::{Window as WinitWindow, WindowBuilder},
 };
 
-use crate::{mainloop::Mainloop, util::SafeWgpuSurface};
+use crate::mainloop::Mainloop;
+use crate::util::SafeWgpuSurface;
 
 pub struct Window {
     event_loop: EventLoop<()>,
@@ -47,8 +48,6 @@ impl Window {
                     window.request_redraw();
                 }
                 Event::WindowEvent { event, window_id } if window_id == window.id() => {
-                    mainloop.input(&event); // todo find way to apply ignore_keyboard() to this
-
                     match event {
                         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                         WindowEvent::Resized(size)
@@ -68,7 +67,7 @@ impl Window {
                             VirtualKeyCode::Escape | VirtualKeyCode::Q => {
                                 *control_flow = ControlFlow::Exit
                             }
-                            _ => {}
+                            _ => mainloop.keyboard(key),
                         },
                         _ => {}
                     }

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use pollster::FutureExt;
+use pollster::FutureExt as _;
 use wgpu::{
     Buffer, BufferDescriptor, BufferUsage, CommandEncoder, ImageCopyBuffer, ImageCopyBufferBase,
     ImageCopyTexture, ImageCopyTextureBase, ImageDataLayout, RenderPass, Texture,
@@ -11,11 +11,12 @@ use winit::{
     window::Window,
 };
 
+use crate::imgui::ImguiWgpuRender;
 use crate::util::{
-    texture_image_layout, texture_size, to_image, TextureDesc, TextureResult, WindowSize,
+    texture_image_layout, texture_size, to_image, CreateFromWgpu, TextureDesc, TextureResult,
+    WindowSize,
 };
 use crate::wgpu::{WgpuBase, WgpuBaseRender, WgpuWindowed, WgpuWindowedRender};
-use crate::{imgui::ImguiWgpuRender, util::CreateFromWgpu};
 
 use super::{Mainloop, WgpuImguiWindowMainloop};
 
@@ -44,23 +45,12 @@ where
         self.inner.event(event)
     }
 
-    fn input(&mut self, event: &WindowEvent<'_>) {
-        self.inner.input(event);
+    fn keyboard(&mut self, key: VirtualKeyCode) {
+        self.inner.keyboard(key);
 
-        if let WindowEvent::KeyboardInput {
-            input:
-                KeyboardInput {
-                    virtual_keycode: Some(key),
-                    state: ElementState::Pressed,
-                    ..
-                },
-            ..
-        } = event
-        {
-            match key {
-                VirtualKeyCode::F1 => self.should_screenshot = true,
-                _ => {}
-            }
+        match key {
+            VirtualKeyCode::F1 => self.should_screenshot = true,
+            _ => {}
         }
     }
 
@@ -161,13 +151,13 @@ where
 
         encoder.copy_texture_to_buffer(
             ImageCopyTexture {
-                texture: &self.texture,
+                texture: self.texture,
                 mip_level: Default::default(),
                 origin: Default::default(),
             },
             ImageCopyBuffer {
-                buffer: &self.buffer,
-                layout: texture_image_layout(&self.desc),
+                buffer: self.buffer,
+                layout: texture_image_layout(self.desc),
             },
             self.desc.size,
         )

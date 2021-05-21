@@ -146,7 +146,7 @@ impl WgpuBase {
                         visibility: ShaderStage::all(),
                         ty: BindingType::Texture {
                             multisampled: false,
-                            view_dimension: texture_view_dimension(&desc),
+                            view_dimension: texture_view_dimension(desc),
                             sample_type: desc.format.describe().sample_type, // it seems to not work with anything else, even though vulkan says any type is 'compatible' https://www.khronos.org/registry/vulkan/specs/1.2/html/chap33.html#formats-compatibility-classes
                         },
                         count: None,

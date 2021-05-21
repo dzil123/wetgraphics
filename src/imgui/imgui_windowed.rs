@@ -4,6 +4,8 @@ use imgui::{Context, DrawData, FontConfig, FontSource, SuspendedContext, Ui};
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use winit::{event::Event, window::Window};
 
+use super::clipboard;
+
 pub enum ImguiStatus {
     Enabled(Context),
     Suspended(SuspendedContext),
@@ -40,12 +42,12 @@ impl<'a> Imgui<'a> {
         let mut context = Context::create();
         context.set_ini_filename(None);
 
-        if let Some(clipboard) = super::clipboard::init() {
+        if let Some(clipboard) = clipboard::init() {
             context.set_clipboard_backend(Box::new(clipboard));
         }
 
         let mut platform = WinitPlatform::init(&mut context);
-        platform.attach_window(context.io_mut(), &window, HiDpiMode::Rounded);
+        platform.attach_window(context.io_mut(), window, HiDpiMode::Rounded);
 
         let hidpi_factor = platform.hidpi_factor();
         let font_size = (13.0 * hidpi_factor) as f32;
