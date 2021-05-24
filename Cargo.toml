@@ -10,12 +10,12 @@ clipboard = "0.5"
 image = { version = "0.23", default-features = false, features = ["png"] }
 imgui = "0.7"
 imgui-wgpu = "0.15"
-imgui-winit-support = { version = "0.7", default-features = false, features = ["winit-24"] }
+imgui-winit-support = { version = "0.7", default-features = false, features = ["winit-25"] }
 phf = "0.8"
 pollster = "0.2"
 wgpu = "0.8"
 wgpu-subscriber = "0.1"
-winit = { version = "0.24", default-features = false, features = ["x11"] }
+winit = { version = "0.25", default-features = false, features = ["x11"] }
 
 [patch.crates-io]
 imgui = { git = "https://github.com/dzil123/imgui-rs/", branch = "combined" }
