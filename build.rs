@@ -3,7 +3,11 @@ use std::fs::{read_to_string, File};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-use shaderc::{CompileOptions, Compiler, OptimizationLevel, ShaderKind};
+use lazy_static::lazy_static;
+use shaderc::{
+    CompileOptions, Compiler, IncludeCallbackResult, IncludeType, OptimizationLevel,
+    ResolvedInclude, ShaderKind,
+};
 
 #[derive(Debug)]
 struct Shader {
@@ -26,11 +30,60 @@ impl From<shaderc::Error> for Error {
     }
 }
 
-fn main() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/shaders");
+fn dbg(x: impl std::fmt::Debug) {
+    println!("cargo:warning={:?}", x);
+}
 
+lazy_static! {
+    static ref REPO_ROOT: &'static Path = Path::new(env!("CARGO_MANIFEST_DIR"));
+    static ref ROOT: PathBuf = REPO_ROOT.join("src/shaders");
+    static ref STD_ROOT: PathBuf = ROOT.join("std");
+    static ref LYGIA_ROOT: PathBuf = REPO_ROOT.join("lygia");
+}
+
+// since this takes &str, it probably isnt OsStr safe
+fn include_lygia(
+    include: &str,
+    ty: IncludeType,
+    source: &str,
+    depth: usize,
+) -> IncludeCallbackResult {
+    assert!(depth < 5);
+
+    let source = Path::new(source);
+    let include = Path::new(include);
+
+    assert!(include.is_relative());
+
+    let path = match ty {
+        IncludeType::Standard => {
+            assert!(source.is_relative()); // implicit prefix of ROOT
+
+            let root = if include.starts_with("lygia/") {
+                LYGIA_ROOT.parent().unwrap()
+            } else {
+                &*STD_ROOT
+                // return Err(format!("invalid include: {}", include.display()));
+            };
+
+            root.join(include)
+        }
+        IncludeType::Relative => {
+            assert!(source.is_absolute()); // this is a sub dependency of a lygia file, comes from resolved_name
+
+            source.parent().unwrap().join(include)
+        }
+    };
+
+    Ok(ResolvedInclude {
+        resolved_name: path.to_string_lossy().into(),
+        content: read_to_string(&path).map_err(|err| Error::from(err).0)?,
+    })
+}
+
+fn main() {
     // allow utf8 paths everywhere except filename and extention
-    let queue: Vec<_> = walkdir::WalkDir::new(&root)
+    let queue: Vec<_> = walkdir::WalkDir::new(&*ROOT)
         .follow_links(true)
         .into_iter()
         .map(|entry| entry.unwrap())
@@ -44,7 +97,7 @@ fn main() {
                 _ => return None,
             };
             // let filename = file.file_name()?.to_str()?.to_owned();
-            let filename = file.strip_prefix(&root).unwrap().to_str()?.to_owned();
+            let filename = file.strip_prefix(&*ROOT).unwrap().to_str()?.to_owned();
 
             Some(Shader {
                 file,
@@ -61,6 +114,7 @@ fn main() {
     let mut options = CompileOptions::new().unwrap();
     options.set_optimization_level(OptimizationLevel::Zero);
     options.set_warnings_as_errors();
+    options.set_include_callback(include_lygia);
     let options = Some(&options);
 
     let mut compiler = Compiler::new().unwrap();
@@ -90,7 +144,7 @@ fn main() {
     }
 
     let path = Path::new(&env::var_os("OUT_DIR").unwrap()).join("codegen_shaders.rs");
-    println!("cargo:warning={:?}", path);
+    dbg(&path);
 
     let mut file = BufWriter::new(File::create(&path).unwrap());
 

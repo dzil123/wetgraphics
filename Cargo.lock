@@ -1780,6 +1780,7 @@ dependencies = [
  "imgui",
  "imgui-wgpu",
  "imgui-winit-support",
+ "lazy_static",
  "phf",
  "phf_codegen",
  "pollster",

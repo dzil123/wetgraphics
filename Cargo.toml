@@ -24,5 +24,6 @@ imgui-winit-support = { git = "https://github.com/dzil123/imgui-rs/", branch = "
 
 [build_dependencies]
 phf_codegen = "0.8"
+lazy_static = "1.4"
 shaderc = "0.7"
 walkdir = "2.3"
