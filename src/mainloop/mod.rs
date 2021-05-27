@@ -4,7 +4,7 @@ mod wgpu_screenshot;
 
 use std::time::Duration;
 
-use winit::event::{Event, VirtualKeyCode, WindowEvent};
+use winit::event::{Event, VirtualKeyCode};
 
 use crate::util::WindowSize;
 

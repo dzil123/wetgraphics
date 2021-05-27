@@ -2,19 +2,17 @@ use std::time::Duration;
 
 use pollster::FutureExt as _;
 use wgpu::{
-    Buffer, BufferDescriptor, BufferUsage, CommandEncoder, ImageCopyBuffer, ImageCopyBufferBase,
-    ImageCopyTexture, ImageCopyTextureBase, ImageDataLayout, RenderPass, Texture,
-    TextureDescriptor, TextureUsage,
+    Buffer, BufferDescriptor, BufferUsage, CommandEncoder, ImageCopyBuffer, ImageCopyTexture,
+    RenderPass, Texture, TextureDescriptor, TextureUsage,
 };
 use winit::{
-    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
+    event::{Event, VirtualKeyCode},
     window::Window,
 };
 
 use crate::imgui::ImguiWgpuRender;
 use crate::util::{
-    texture_image_layout, texture_size, to_image, CreateFromWgpu, TextureDesc, TextureResult,
-    WindowSize,
+    texture_image_layout, texture_size, to_image, CreateFromWgpu, TextureResult, WindowSize,
 };
 use crate::wgpu::{WgpuBase, WgpuBaseRender, WgpuWindowed, WgpuWindowedRender};
 

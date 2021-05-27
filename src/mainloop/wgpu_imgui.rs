@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use winit::{
-    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
+    event::{Event, VirtualKeyCode},
     window::Window,
 };
 

@@ -1,9 +1,9 @@
-use shaderc::{CompileOptions, Compiler, OptimizationLevel, ShaderKind};
-use std::fs::read_to_string;
-use std::fs::File;
+use std::env;
+use std::fs::{read_to_string, File};
 use std::io::{BufWriter, Write};
-use std::path::Path;
-use std::{env, path::PathBuf};
+use std::path::{Path, PathBuf};
+
+use shaderc::{CompileOptions, Compiler, OptimizationLevel, ShaderKind};
 
 #[derive(Debug)]
 struct Shader {
@@ -59,7 +59,7 @@ fn main() {
     //     .for_each(|line| println!("cargo:warning={}", line));
 
     let mut options = CompileOptions::new().unwrap();
-    options.set_optimization_level(OptimizationLevel::Performance);
+    options.set_optimization_level(OptimizationLevel::Zero);
     options.set_warnings_as_errors();
     let options = Some(&options);
 

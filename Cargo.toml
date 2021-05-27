@@ -21,8 +21,6 @@ winit = { version = "0.25", default-features = false, features = ["x11"] }
 imgui = { git = "https://github.com/dzil123/imgui-rs/", branch = "combined" }
 imgui-sys = { git = "https://github.com/dzil123/imgui-rs/", branch = "combined" }
 imgui-winit-support = { git = "https://github.com/dzil123/imgui-rs/", branch = "combined" }
-#wgpu-core = { path = "/home/daniel/ramdisk/wgpu/wgpu-core/" }
-#wgpu-types = { path = "/home/daniel/ramdisk/wgpu/wgpu-types/" }
 
 [build_dependencies]
 phf_codegen = "0.8"
