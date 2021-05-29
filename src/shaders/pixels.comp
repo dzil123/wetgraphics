@@ -1,0 +1,36 @@
+#version 450
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(set = 0, binding = 0, rgba8ui) restrict writeonly uniform uimage2D output_tex;
+
+layout(push_constant) uniform PushConstants {
+    uvec2 size;
+}
+pushc;
+
+#include <rand.glsl>
+
+// layout(set = 1, binding = 0) uniform Config {
+//     uvec2 size;
+//     uint num_pixels;
+// } config;
+
+// layout(std140, set = 1, binding = 1) readonly buffer Data {
+//     Pixel pixels[];
+// } data;
+
+void main() {
+    uvec2 uv = gl_GlobalInvocationID.xy;
+
+    if (uv.x < 0 || uv.x >= pushc.size.x || uv.y < 0 || uv.y >= pushc.size.y) {
+        return;
+    }
+
+    uint id = gl_LocalInvocationIndex;
+    uint f = id & 0xFF;  // u8
+
+    uint index = uv.x + uv.y * pushc.size.x;
+
+    imageStore(output_tex, ivec2(uv), uvec4(uvec3(rand(uvec3(uv, 1)).x) / 16777216, 0));
+}

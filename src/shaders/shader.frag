@@ -1,17 +1,19 @@
 #version 450
 
+#extension GL_EXT_samplerless_texture_functions : require
+
 layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 f_color;
 
+layout(set = 0, binding = 0) uniform utexture2D input_tex;
+layout(set = 0, binding = 1) uniform sampler input_smp;  // unused
+
 layout(push_constant) uniform PushConstants {
-    uint width;
+    uvec2 size;
     int pixels;
     uint front;  // bool
 }
 pushc;
-
-layout(set = 0, binding = 0) uniform texture2D t_diffuse;
-layout(set = 0, binding = 1) uniform sampler s_diffuse;
 
 const float EPS = 0.000001;
 
@@ -21,7 +23,7 @@ const float EPS = 0.000001;
 #include <rand.glsl>
 
 void main() {
-    uint width2 = pushc.width * 2;  // uv is on pixel center
+    uint width2 = pushc.size.x * 2;  // uv is on pixel center
     float pixelsf = float(pushc.pixels * 2 - 1) / width2 + EPS;
 
     float f = 0.0;
@@ -64,7 +66,10 @@ void main() {
 
     // ok for some reason passing in pushc.pixels as a float causes anything >= 1 to be the same
 
-    f = randf(vec3(uv, float(pushc.pixels) / pushc.width)).x;
+    f = randf(vec3(uv, float(pushc.pixels) / pushc.size.x)).x;
 
-    f_color = vec4(vec3(f), 1.0);
+    uvec4 pixel = texelFetch(input_tex, ivec2(uv * vec2(pushc.size)), 0);
+    vec3 color = vec3(pixel.xyz) / 255.0;
+
+    f_color = vec4(color, 1.0);
 }
