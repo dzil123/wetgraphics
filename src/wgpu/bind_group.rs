@@ -1,12 +1,14 @@
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType, ShaderStage,
-    StorageTextureAccess, TextureDescriptor, TextureView,
+    BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType, Device, Sampler,
+    ShaderStage, StorageTextureAccess, TextureDescriptor, TextureView,
 };
 
 use crate::util::{texture_view_dimension, SamplerDesc};
 
 use super::WgpuBase;
+
+type SamplerHolders<'a> = std::slice::IterMut<'a, Option<Sampler>>;
 
 impl WgpuBase {
     pub fn bind_group(&self, entries: &[BindGroupEntry<'_>]) -> BindGroupResult {
@@ -28,12 +30,17 @@ impl WgpuBase {
                 entries: &layout_entries,
             });
 
+        let len = entries.len();
+        let mut holders: Vec<Option<Sampler>> = Vec::with_capacity(len);
+        holders.resize_with(len, Default::default);
+        let mut holders = holders.iter_mut();
+
         let bind_entries: Vec<_> = entries
             .iter()
             .enumerate()
             .map(|(index, entry)| wgpu::BindGroupEntry {
                 binding: index as _,
-                resource: entry.as_bind(),
+                resource: entry.as_bind(&self.device, &mut holders),
             })
             .collect();
 
@@ -103,14 +110,16 @@ impl<'a> BindGroupEntry<'a> {
         }
     }
 
-    fn as_bind<'b>(&self) -> BindingResource<'b>
-    where
-        'a: 'b,
-    {
+    fn as_bind(&self, device: &Device, holders: &mut SamplerHolders<'a>) -> BindingResource<'_> {
         match self {
             Self::Buffer { buffer, .. } => buffer.as_entire_binding(),
             Self::Sampler { desc } => {
-                let sampler = todo!();
+                let sampler = device.create_sampler(&(*desc).into());
+
+                let holder = holders.next().expect("Ran out of space to store samplers");
+                *holder = Some(sampler);
+                let sampler = holder.as_ref().unwrap();
+
                 BindingResource::Sampler(sampler)
             }
             Self::Texture { view, .. } => BindingResource::TextureView(view),
