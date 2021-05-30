@@ -12,9 +12,9 @@ use winit::{
 
 use crate::imgui::ImguiWgpuRender;
 use crate::util::{
-    texture_image_layout, texture_size, to_image, CreateFromWgpu, TextureResult, WindowSize,
+    texture_image_layout, texture_size, to_image, CreateFromWgpu, InitType, WindowSize,
 };
-use crate::wgpu::{WgpuBase, WgpuBaseRender, WgpuWindowed, WgpuWindowedRender};
+use crate::wgpu::{TextureResult, WgpuBase, WgpuBaseRender, WgpuWindowed, WgpuWindowedRender};
 
 use super::{Mainloop, WgpuImguiWindowMainloop};
 
@@ -77,7 +77,7 @@ where
         let desc = desc_orig.into_2d(
             TextureUsage::COPY_SRC | TextureUsage::SAMPLED | TextureUsage::RENDER_ATTACHMENT,
         );
-        let TextureResult { texture, view, .. } = base.texture(&desc, Default::default(), None);
+        let TextureResult { texture, view, .. } = base.texture(&desc, InitType::Uninit);
 
         let buffer = base.device.create_buffer(&BufferDescriptor {
             size: texture_size(&desc) as _,

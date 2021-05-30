@@ -2,16 +2,12 @@ use std::iter;
 
 use pollster::FutureExt as _;
 use wgpu::{
-    util::DeviceExt, Adapter, BackendBit, BindGroupDescriptor, BindGroupEntry,
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, CommandEncoder,
-    Device, DeviceDescriptor, Features, Instance, Limits, PowerPreference, Queue, RenderPass,
-    RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, ShaderModule,
-    ShaderStage, Surface, TextureDescriptor, TextureView,
+    Adapter, BackendBit, CommandEncoder, Device, DeviceDescriptor, Features, Instance, Limits,
+    PowerPreference, Queue, RenderPass, RenderPassColorAttachment, RenderPassDescriptor,
+    RequestAdapterOptions, ShaderModule, Surface, TextureView,
 };
 
-use crate::util::{
-    texture_size, texture_view_dimension, SafeWgpuSurface, SamplerDesc, TextureResult,
-};
+use crate::util::SafeWgpuSurface;
 
 // simple render pass that only clears the frame to black. ignore if using depth buffer, not clearing frame, or anything more complex
 fn begin_render_pass<'a>(
@@ -111,82 +107,6 @@ impl WgpuBase {
 
     pub fn shader(&self, name: &str) -> ShaderModule {
         crate::shaders::load(&self.device, name)
-    }
-
-    // todo: only create sampler/bind when needed?
-    pub fn texture(
-        &self,
-        desc: &TextureDescriptor<'_>,
-        sampler: SamplerDesc,
-        data: Option<Option<&[u8]>>,
-    ) -> TextureResult {
-        let texture = match data {
-            Some(data) => {
-                let mut vec = Vec::new();
-
-                let data = data.unwrap_or_else(|| {
-                    vec.resize(texture_size(desc), 0);
-                    &vec
-                });
-
-                self.device
-                    .create_texture_with_data(&self.queue, desc, data)
-            }
-            None => self.device.create_texture(desc),
-        };
-
-        let view = texture.create_view(&Default::default());
-        let sampler = self.device.create_sampler(&sampler.into()); // todo: reuse samplers, bind group layouts?
-
-        let bind_layout = self
-            .device
-            .create_bind_group_layout(&BindGroupLayoutDescriptor {
-                entries: &[
-                    BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStage::all(),
-                        ty: BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: texture_view_dimension(desc),
-                            sample_type: desc.format.describe().sample_type, // it seems to not work with anything else, even though vulkan says any type is 'compatible' https://www.khronos.org/registry/vulkan/specs/1.2/html/chap33.html#formats-compatibility-classes
-                        },
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStage::all(),
-                        ty: BindingType::Sampler {
-                            comparison: false,
-                            filtering: true,
-                        },
-                        count: None,
-                    },
-                ],
-                label: None,
-            });
-
-        let bind = self.device.create_bind_group(&BindGroupDescriptor {
-            layout: &bind_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(&view),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::Sampler(&sampler),
-                },
-            ],
-            label: None,
-        });
-
-        TextureResult {
-            texture,
-            view,
-            sampler,
-            bind_layout,
-            bind,
-        }
     }
 }
 

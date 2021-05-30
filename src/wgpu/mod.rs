@@ -1,5 +1,11 @@
-pub mod wgpu_base;
-pub mod wgpu_windowed;
+mod base;
+mod bind_group;
+mod buffer;
+mod texture;
+mod windowed;
 
-pub use wgpu_base::{WgpuBase, WgpuBaseRender};
-pub use wgpu_windowed::{WgpuWindowed, WgpuWindowedRender};
+pub use base::{WgpuBase, WgpuBaseRender};
+pub use bind_group::{BindGroupEntry, BindGroupResult};
+pub use buffer::BufferDesc;
+pub use texture::TextureResult;
+pub use windowed::{WgpuWindowed, WgpuWindowedRender};

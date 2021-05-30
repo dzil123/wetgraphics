@@ -1,20 +1,17 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::{
-    util::{BufferInitDescriptor, DeviceExt},
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Buffer, BufferBinding,
-    BufferBindingType, BufferDescriptor, BufferUsage, ColorTargetState, ColorWrite, CommandEncoder,
+    BindGroup, BufferBindingType, BufferUsage, ColorTargetState, ColorWrite, CommandEncoder,
     ComputePipeline, ComputePipelineDescriptor, Face, FragmentState, PipelineLayoutDescriptor,
     PrimitiveState, PushConstantRange, RenderPass, RenderPipeline, RenderPipelineDescriptor,
-    ShaderStage, StorageTextureAccess, TextureFormat, TextureFormatFeatures, TextureUsage,
-    VertexState,
+    ShaderStage, StorageTextureAccess, TextureFormat, TextureUsage, VertexState,
 };
 
 use crate::imgui::ImguiWgpuRender;
-use crate::util::{
-    texture_size, texture_view_dimension, CreateFromWgpu, TextureDesc, TextureResult,
+use crate::util::{CreateFromWgpu, InitType, TextureDesc};
+use crate::wgpu::{
+    BindGroupEntry, BindGroupResult, BufferDesc, TextureResult, WgpuBase, WgpuWindowed,
+    WgpuWindowedRender,
 };
-use crate::wgpu::{WgpuBase, WgpuWindowed, WgpuWindowedRender};
 
 const COLORS: [[f32; 3]; 4] = [
     [0.0, 0.0, 0.0],
@@ -56,11 +53,7 @@ pub struct App {
     compute_pipeline: ComputePipeline,
     color_index: usize,
     texture_bind_group: BindGroup,
-    // frag_tex_bind_group: BindGroup,
     comp_tex_bind_group: BindGroup,
-    // comp_config_buffer: Buffer,
-    // comp_data_buffer: Buffer,
-    // comp_bind_group: BindGroup,
     push_constants: PushConstants,
 }
 
@@ -75,44 +68,17 @@ impl CreateFromWgpu for App {
 
         let device = &wgpu_base.device;
 
-        let num_bytes = texture_size(&desc);
-        let data: Vec<u8> = (0..num_bytes).into_iter().map(|x| (x * 85) as _).collect();
+        let TextureResult { view: tex_view, .. } =
+            wgpu_base.texture(&desc, InitType::Repeated(&[0, 255, 0, 255]));
 
-        let data2: Vec<u8> = std::iter::repeat([0, 255, 0, 255].iter())
-            .flatten()
-            .copied()
-            .take(num_bytes as _)
-            .collect();
-
-        let TextureResult {
-            bind_layout: tex_bind_layout,
+        let BindGroupResult {
+            layout: tex_bind_layout,
             bind: texture_bind_group,
-            view: tex_view,
-            ..
-        } = wgpu_base.texture(&desc, Default::default(), Some(Some(&data2)));
-
-        // let frag_tex_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        //     label: None,
-        //     entries: &[BindGroupLayoutEntry {
-        //         binding: 0,
-        //         visibility: ShaderStage::FRAGMENT,
-        //         ty: BindingType::StorageTexture {
-        //             access: StorageTextureAccess::ReadOnly,
-        //             format: desc.format,
-        //             view_dimension: texture_view_dimension(&desc),
-        //         },
-        //         count: None,
-        //     }],
-        // });
-
-        // let frag_tex_bind_group = device.create_bind_group(&BindGroupDescriptor {
-        //     label: None,
-        //     layout: &frag_tex_bind_layout,
-        //     entries: &[BindGroupEntry {
-        //         binding: 0,
-        //         resource: BindingResource::TextureView(&tex_view),
-        //     }],
-        // });
+        } = wgpu_base.bind_group(&[BindGroupEntry::Texture {
+            storage: None,
+            desc: desc.clone(),
+            view: &tex_view,
+        }]);
 
         let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: None,
@@ -134,7 +100,7 @@ impl CreateFromWgpu for App {
                 entry_point: "main",
                 targets: &[ColorTargetState {
                     format: swapchain_desc.format,
-                    blend: Some(BlendState::REPLACE),
+                    blend: None,
                     write_mask: ColorWrite::ALL,
                 }],
             }),
@@ -146,87 +112,14 @@ impl CreateFromWgpu for App {
             multisample: Default::default(),
         });
 
-        // let comp_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        //     label: None,
-        //     entries: &[
-        // BindGroupLayoutEntry {
-        //     binding: 0,
-        //     visibility: ShaderStage::COMPUTE,
-        //     ty: BindingType::Buffer {
-        //         ty: BufferBindingType::Uniform,
-        //         has_dynamic_offset: false,
-        //         min_binding_size: None,
-        //     },
-        //     count: None,
-        // },
-        // BindGroupLayoutEntry {
-        //             binding: 0,
-        //             visibility: ShaderStage::COMPUTE,
-        //             ty: BindingType::Buffer {
-        //                 ty: BufferBindingType::Storage { read_only: false },
-        //                 has_dynamic_offset: false,
-        //                 min_binding_size: None,
-        //             },
-        //             count: None,
-        //         },
-        //     ],
-        // });
-
-        // let pixels = Vec::with_capacity(NUM_PIXELS);
-
-        // let comp_config_buffer = device.create_buffer_init(&BufferInitDescriptor {
-        //     label: None,
-        //     contents: bytemuck::bytes_of(&ComputeConfig {
-        //         width: desc.size.width,
-        //         height: desc.size.height,
-        //         num_pixels: 0,
-        //     }),
-        //     usage: BufferUsage::UNIFORM, // todo
-        // });
-
-        // let comp_data_buffer = device.create_buffer_init(&BufferInitDescriptor {
-        //     label: None,
-        //     contents: bytemuck::cast_slice(&[[0u32, 0]; NUM_PIXELS]),
-        //     usage: BufferUsage::STORAGE, // todo
-        // });
-
-        // let comp_bind_group = device.create_bind_group(&BindGroupDescriptor {
-        //     label: None,
-        //     layout: &comp_bind_layout,
-        //     entries: &[
-        //         BindGroupEntry {
-        //             binding: 0,
-        //             resource: comp_config_buffer.as_entire_binding(),
-        //         },
-        //         BindGroupEntry {
-        //             binding: 1,
-        //             resource: comp_data_buffer.as_entire_binding(),
-        //         },
-        //     ],
-        // });
-
-        let comp_tex_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: None,
-            entries: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStage::COMPUTE,
-                ty: BindingType::StorageTexture {
-                    access: StorageTextureAccess::WriteOnly,
-                    format: desc.format,
-                    view_dimension: texture_view_dimension(&desc),
-                },
-                count: None,
-            }],
-        });
-
-        let comp_tex_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: None,
-            layout: &comp_tex_bind_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: BindingResource::TextureView(&tex_view),
-            }],
-        });
+        let BindGroupResult {
+            layout: comp_tex_bind_layout,
+            bind: comp_tex_bind_group,
+        } = wgpu_base.bind_group(&[BindGroupEntry::Texture {
+            storage: Some(StorageTextureAccess::WriteOnly),
+            desc: desc.clone(),
+            view: &tex_view,
+        }]);
 
         let compute_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
             label: None,

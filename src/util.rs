@@ -1,10 +1,9 @@
 use std::num::NonZeroU32;
 
 use wgpu::{
-    AddressMode, BindGroup, BindGroupLayout, Extent3d, FilterMode, ImageDataLayout, Instance,
-    Sampler, SamplerDescriptor, Surface, SwapChainDescriptor, Texture, TextureDescriptor,
-    TextureDimension, TextureFormat, TextureUsage, TextureView, TextureViewDimension,
-    COPY_BYTES_PER_ROW_ALIGNMENT,
+    AddressMode, Extent3d, FilterMode, ImageDataLayout, Instance, SamplerDescriptor, Surface,
+    SwapChainDescriptor, TextureDescriptor, TextureDimension, TextureFormat, TextureUsage,
+    TextureViewDimension, COPY_BYTES_PER_ROW_ALIGNMENT,
 };
 
 use crate::wgpu::WgpuBase;
@@ -39,7 +38,7 @@ impl TextureDesc {
             sample_count: 1,
             dimension: TextureDimension::D2,
             format: self.format,
-            usage: usage | TextureUsage::COPY_DST, // always written by wgpu_base.texture()  // todo: replace with self.format.describe().guaranteed_format_features.allowed_usages?
+            usage, // todo: replace with self.format.describe().guaranteed_format_features.allowed_usages?
         }
     }
 
@@ -84,10 +83,10 @@ impl From<&SwapChainDescriptor> for TextureDesc {
     }
 }
 
-#[derive(Default)]
+#[derive(Copy, Clone, Default)]
 pub struct SamplerDesc {
-    filter: bool,
-    address: AddressMode,
+    pub filter: bool,
+    pub address: AddressMode,
 }
 
 impl From<SamplerDesc> for SamplerDescriptor<'static> {
@@ -166,15 +165,6 @@ pub fn to_image(data: &[u8], desc: &TextureDesc) -> image::ImageResult<image::Dy
     image::DynamicImage::from_decoder(Decoder { data, desc })
 }
 
-// wgpu does implicit Arc<> semantics in the background, so eg everything can be dropped but BindGroup will remain valid
-pub struct TextureResult {
-    pub texture: Texture,
-    pub view: TextureView,
-    pub sampler: Sampler,
-    pub bind_layout: BindGroupLayout,
-    pub bind: BindGroup,
-}
-
 pub fn texture_size(desc: &TextureDescriptor<'_>) -> usize {
     let size = desc.size;
     let fmt = desc.format.describe();
@@ -187,4 +177,41 @@ pub fn texture_size(desc: &TextureDescriptor<'_>) -> usize {
         * (size.width as usize)
         * (size.height as usize)
         * (size.depth_or_array_layers as usize)
+}
+
+pub enum InitType<'a> {
+    Uninit,             // simple create
+    Zeros,              // allocate a vec of 0s and do init create
+    Repeated(&'a [u8]), // eg texture color, init create
+    Data(&'a [u8]),     // init create
+}
+
+impl<'a> InitType<'a> {
+    pub fn create<T>(
+        self,
+        size: usize,
+        uninit: impl FnOnce() -> T,
+        init: impl FnOnce(&[u8]) -> T,
+    ) -> T {
+        let mut vec = Vec::new();
+
+        let data: &[u8] = match self {
+            Self::Uninit => return uninit(),
+            Self::Zeros => {
+                vec.resize(size, 0);
+                &vec
+            }
+            Self::Repeated(word) => {
+                vec = std::iter::repeat(word)
+                    .flatten()
+                    .copied()
+                    .take(size)
+                    .collect();
+                &vec
+            }
+            Self::Data(data) => data,
+        };
+
+        init(data)
+    }
 }
