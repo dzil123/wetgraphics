@@ -21,7 +21,7 @@ type MainloopImpl<'a, T> = WgpuScreenshot<'a, T>;
 
 fn main() {
     env::set_var("RUST_LOG", env::var("RUST_LOG").unwrap_or("warn".into()));
-    wgpu_subscriber::initialize_default_subscriber(None);
+    env_logger::init();
     let (window, winit_window) = Window::new();
     let mainloop = MainloopImpl::<app::App>::new(&winit_window);
     window.run(&winit_window, mainloop);
