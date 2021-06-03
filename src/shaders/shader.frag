@@ -5,70 +5,32 @@
 layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 f_color;
 
-layout(set = 0, binding = 0) uniform utexture2D input_tex;
+layout(set = 0, binding = 0) uniform texture2D input_tex;
+layout(set = 0, binding = 1) uniform sampler input_smp;
 
-layout(push_constant) uniform PushConstants {
-    uvec2 size;
-    int pixels;
-    uint front;  // bool
+layout(std430, push_constant) uniform PushConstants {
+    vec3 foreground;
+    vec3 background;
+    bool front;
+    float offset;
 }
 pushc;
 
-const float EPS = 0.000001;
-
-#include <lygia/generative/noised.glsl>
-#include <lygia/generative/random.glsl>
-#include <lygia/generative/snoise.glsl>
-#include <rand.glsl>
+// todo: add to stdlib
+float saturate(float x) {
+    return clamp(x, 0.0, 1.0);
+}
 
 void main() {
-    uint width2 = pushc.size.x * 2;  // uv is on pixel center
-    float pixelsf = float(pushc.pixels * 2 - 1) / width2 + EPS;
+    // uvec4 pixel = texelFetch(input_tex, ivec2(uv * vec2(pushc.size)), 0);
 
-    float f = 0.0;
+    float f = saturate(texture(sampler2D(input_tex, input_smp), uv).x);
+    f = fract(f + pushc.offset);
 
-    float v = uv.x;
-    bool d;
-    if (pushc.front != 0) {
-        d = v <= (0.0 + pixelsf);
-    } else {
-        d = v >= (1.0 - pixelsf);
+    if (pushc.front) {
+        f = 1.0 - f;
     }
-
-    // f = random(uv);
-    // f = snoise(uv * pushc.pixels) * .5 + .5;
-    // f = noised(uv * pushc.pixels).x * .5 + .5;
-
-    // float x = 0.0;
-    // if (pushc.pixels > 400) {
-    //     x = pushc.pixels;
-    // } else if (pushc.pixels > 0) {
-    //     x = 1.0;
-    // }
-    // f = randf(vec3(uv, x)).x;
-
-    // uint x = 0;
-    // if (pushc.pixels > 400) {
-    //     // x = uint(uint_MAXf * float(pushc.pixels));
-    //     // x = 0xffffffff;
-    //     x = uint(uint_MAXf * 400u);
-    // } else if (pushc.pixels > 300) {
-    //     // x = 0xfffffffe;
-    //     x = uint(uint_MAXf * 300u);
-    // } else if (pushc.pixels > 200) {
-    //     // x = 0xfffffffd;
-    //     x = uint(uint_MAXf * 200u);
-    // } else if (pushc.pixels > 100) {
-    //     // x = 0xfffffffc;
-    //     x = uint(uint_MAXf * 100u);
-    // }
-
-    // ok for some reason passing in pushc.pixels as a float causes anything >= 1 to be the same
-
-    f = randf(vec3(uv, float(pushc.pixels) / pushc.size.x)).x;
-
-    uvec4 pixel = texelFetch(input_tex, ivec2(uv * vec2(pushc.size)), 0);
-    vec3 color = vec3(pixel.xyz) / 255.0;
+    vec3 color = mix(pushc.background, pushc.foreground, f);
 
     f_color = vec4(color, 1.0);
 }

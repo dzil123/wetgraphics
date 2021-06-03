@@ -72,7 +72,7 @@ where
 
         let base = &wgpu_window.base;
 
-        let desc_orig = wgpu_window.desc().aligned();
+        let desc_orig = wgpu_window.desc().aligned_for_buffer();
         dbg!(desc_orig.width);
         let desc = desc_orig.into_2d(
             TextureUsage::COPY_SRC | TextureUsage::SAMPLED | TextureUsage::RENDER_ATTACHMENT,

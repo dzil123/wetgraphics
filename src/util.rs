@@ -1,5 +1,6 @@
 use std::num::NonZeroU32;
 
+use crevice::std430::UVec2;
 use wgpu::{
     AddressMode, Extent3d, FilterMode, ImageDataLayout, Instance, SamplerDescriptor, Surface,
     SwapChainDescriptor, TextureDescriptor, TextureDimension, TextureFormat, TextureUsage,
@@ -63,12 +64,19 @@ impl TextureDesc {
         }
     }
 
-    pub fn aligned(&self) -> Self {
+    pub fn aligned_for_buffer(&self) -> Self {
         let pixel_align = COPY_BYTES_PER_ROW_ALIGNMENT / (self.format.describe().block_size as u32);
 
         Self {
             width: (((self.width - 1) / pixel_align) + 1) * pixel_align,
             ..self.clone()
+        }
+    }
+
+    pub fn size(&self) -> UVec2 {
+        UVec2 {
+            x: self.width,
+            y: self.height,
         }
     }
 }
@@ -212,6 +220,22 @@ impl<'a> InitType<'a> {
             Self::Data(data) => data,
         };
 
+        assert_eq!(size, data.len());
+
         init(data)
     }
+}
+
+#[cfg(target_endian = "little")]
+pub fn as_bool<'a>(x: &'a mut u32) -> &'a mut bool {
+    assert!(*x < 2);
+
+    let y = x as *mut u32 as *mut bool;
+    let y: &mut bool = unsafe { &mut *y };
+
+    y
+}
+
+pub fn align_to(x: u32, a: u32) -> u32 {
+    x - (x % a) + a
 }

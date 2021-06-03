@@ -323,8 +323,7 @@ dependencies = [
 [[package]]
 name = "crevice"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9e883649f0034cf5dc90c8b92565d7257046fef6cee5cc1ec9b8fca50f94c52"
+source = "git+https://github.com/LPGhatguy/crevice?rev=c812346#c81234662e5118d115922e89d0f0f6fbc9ac560f"
 dependencies = [
  "bytemuck",
  "crevice-derive",
@@ -334,8 +333,7 @@ dependencies = [
 [[package]]
 name = "crevice-derive"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59df944711613d8eba285cb3fc14dcfde9fd58bd13cc397a72089f0db4b3467c"
+source = "git+https://github.com/LPGhatguy/crevice?rev=c812346#c81234662e5118d115922e89d0f0f6fbc9ac560f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -687,16 +685,6 @@ dependencies = [
  "naga",
  "raw-window-handle",
  "thiserror",
-]
-
-[[package]]
-name = "glam"
-version = "0.15.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3abb554f8ee44336b72d522e0a7fe86a29e09f839a36022fa869a7dfe941a54b"
-dependencies = [
- "bytemuck",
- "mint",
 ]
 
 [[package]]
@@ -1699,7 +1687,6 @@ dependencies = [
  "crevice",
  "env_logger",
  "fxhash",
- "glam",
  "image",
  "imgui",
  "imgui-wgpu",

@@ -10,7 +10,7 @@ clipboard = "0.5"
 crevice = "0.6"
 env_logger = "0.8"
 fxhash = "0.2"
-glam = { version = "0.15", features = ["bytemuck", "mint"] }
+# glam = { version = "0.15", features = ["bytemuck", "mint"] }
 image = { version = "0.23", default-features = false, features = ["png"] }
 imgui = "0.7"
 imgui-wgpu = "0.15"
@@ -24,6 +24,7 @@ winit = { version = "0.25", default-features = false, features = ["x11"] }
 imgui = { git = "https://github.com/dzil123/imgui-rs/", branch = "combined" }
 imgui-sys = { git = "https://github.com/dzil123/imgui-rs/", branch = "combined" }
 imgui-winit-support = { git = "https://github.com/dzil123/imgui-rs/", branch = "combined" }
+crevice = { git = "https://github.com/LPGhatguy/crevice", rev = "c812346" }
 
 [build_dependencies]
 phf_codegen = "0.8"
