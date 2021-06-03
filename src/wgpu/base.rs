@@ -4,7 +4,7 @@ use pollster::FutureExt as _;
 use wgpu::{
     Adapter, BackendBit, CommandEncoder, Device, DeviceDescriptor, Features, Instance, Limits,
     PowerPreference, Queue, RenderPass, RenderPassColorAttachment, RenderPassDescriptor,
-    RequestAdapterOptions, ShaderModule, Surface, TextureView,
+    RequestAdapterOptions, Surface, TextureView,
 };
 
 use crate::util::SafeWgpuSurface;
@@ -45,6 +45,7 @@ pub struct WgpuBase {
     pub adapter: Adapter,
     pub device: Device,
     pub queue: Queue,
+    pub(super) shaders: super::shaders::Shaders,
 }
 
 impl WgpuBase {
@@ -72,6 +73,7 @@ impl WgpuBase {
             adapter,
             device,
             queue,
+            shaders: Default::default(),
         }
     }
 
@@ -103,10 +105,6 @@ impl WgpuBase {
 
         target.render_encoder(self, &mut encoder, true);
         self.queue.submit(iter::once(encoder.finish()));
-    }
-
-    pub fn shader(&self, name: &str) -> ShaderModule {
-        crate::shaders::load(&self.device, name)
     }
 }
 

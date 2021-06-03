@@ -15,7 +15,7 @@ pub trait SafeWgpuSurface {
 pub type WindowSize = winit::dpi::PhysicalSize<u32>;
 
 pub trait CreateFromWgpu {
-    fn new(wgpu_base: &WgpuBase, desc: &TextureDesc) -> Self;
+    fn new(wgpu_base: &mut WgpuBase, desc: &TextureDesc) -> Self;
 }
 
 #[derive(Clone)]

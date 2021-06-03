@@ -1698,6 +1698,7 @@ dependencies = [
  "clipboard",
  "crevice",
  "env_logger",
+ "fxhash",
  "glam",
  "image",
  "imgui",

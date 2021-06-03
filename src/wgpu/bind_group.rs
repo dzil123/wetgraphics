@@ -92,7 +92,7 @@ impl<'a> BindGroupEntry<'a> {
             Self::Texture {
                 storage: None,
                 desc,
-                view,
+                ..
             } => BindingType::Texture {
                 sample_type: desc.format.describe().sample_type,
                 view_dimension: texture_view_dimension(desc),
@@ -101,7 +101,7 @@ impl<'a> BindGroupEntry<'a> {
             Self::Texture {
                 storage: Some(access),
                 desc,
-                view,
+                ..
             } => BindingType::StorageTexture {
                 access: *access,
                 format: desc.format,

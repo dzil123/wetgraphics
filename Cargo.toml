@@ -9,6 +9,7 @@ bytemuck = { version = "1.5", features = ["derive"] }
 clipboard = "0.5"
 crevice = "0.6"
 env_logger = "0.8"
+fxhash = "0.2"
 glam = { version = "0.15", features = ["bytemuck", "mint"] }
 image = { version = "0.23", default-features = false, features = ["png"] }
 imgui = "0.7"
