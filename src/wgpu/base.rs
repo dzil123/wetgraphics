@@ -53,7 +53,8 @@ impl WgpuBase {
         let (device, queue) = adapter
             .request_device(
                 &DeviceDescriptor {
-                    features: Features::PUSH_CONSTANTS,
+                    features: Features::PUSH_CONSTANTS
+                        | Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
                     limits: Limits {
                         max_push_constant_size: 128,
                         ..Default::default()

@@ -8,7 +8,6 @@ fn lookup(name: &str) -> ShaderResult {
     *SHADERS.get(name).unwrap_or(&Err("Not Found"))
 }
 
-// todo: cache?
 #[track_caller]
 pub fn load(device: &wgpu::Device, name: &str) -> wgpu::ShaderModule {
     let shader = match lookup(name) {

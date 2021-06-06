@@ -21,15 +21,24 @@ float saturate(float x) {
     return clamp(x, 0.0, 1.0);
 }
 
+#include <consts.glsl>
+#include <rand.glsl>
+
 void main() {
     // uvec4 pixel = texelFetch(input_tex, ivec2(uv * vec2(pushc.size)), 0);
 
-    float f = saturate(texture(sampler2D(input_tex, input_smp), uv).x);
-    f = fract(f + pushc.offset);
+    float f = texture(sampler2D(input_tex, input_smp), uv).x;
+    // f = saturate(f);
+
+    f += pushc.offset;
+    if (f > 1.0 + EPSILON) {
+        f -= 1.0;
+    }
 
     if (pushc.front) {
         f = 1.0 - f;
     }
+
     vec3 color = mix(pushc.background, pushc.foreground, f);
 
     f_color = vec4(color, 1.0);

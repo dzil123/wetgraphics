@@ -31,6 +31,6 @@ impl WgpuBase {
 }
 
 pub struct BufferDesc {
-    pub size: usize, // todo: instead take a std140 type and compute size from that?
+    pub size: usize, // todo: instead take a std140 type and compute size from that? // update: would this require generic over std140, std430?
     pub usage: BufferUsage,
 }

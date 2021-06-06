@@ -1,0 +1,44 @@
+#version 450
+
+#include "shared_agents.glsl"
+
+layout(local_size_x = 64) in;
+
+layout(push_constant, std430) uniform PushConstants {
+    uvec2 size;
+}
+pushc;
+
+layout(set = 0, binding = 0, std430) buffer Data {
+    uint num_agents;
+    Agent agents[];
+}
+data;
+
+#include <consts.glsl>
+#include <rand.glsl>
+
+void main() {
+    uint index = gl_GlobalInvocationID.x;
+
+    if (index >= data.num_agents) {
+        return;
+    }
+
+    vec2 low = vec2(0.25);
+    vec2 high = vec2(0.75);
+
+    vec3 random = rand(index).xyz / uint_MAXf;
+
+    Agent agent;
+
+    vec2 norm_pos = random.xy;
+    norm_pos = mix(low, high, norm_pos);
+    // agent.pos = uvec2(norm_pos * pushc.size);
+    // agent.pos = norm_pos;
+    agent.pos = vec2(norm_pos * pushc.size);
+
+    agent.angle = random.z * TAU;
+
+    data.agents[index] = agent;
+}

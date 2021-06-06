@@ -1,0 +1,90 @@
+#version 450
+
+#include "shared_agents.glsl"
+
+layout(local_size_x = 64) in;
+
+layout(set = 0, binding = 0, r32f) restrict uniform image2D output_tex;
+
+layout(set = 0, binding = 1, std430) buffer Data {
+    uint num_agents;
+    Agent agents[];
+}
+data;
+
+layout(set = 0, binding = 2, std140) uniform Config {
+    float speed;  // pixels per second
+    float sensor_dist;
+    int sensor_size;  // square half-extents
+    float sensor_angle;
+    float turn_speed;
+}
+config;
+
+#include <rand.glsl>
+
+float sense(Agent agent, float angle) {
+    angle += agent.angle;
+    vec2 dir = vec2(cos(angle), sin(angle));
+    ivec2 pos = ivec2(agent.pos + dir * config.sensor_dist + 0.5);
+
+    float sum = 0;
+    for (int dx = -config.sensor_size; dx <= config.sensor_size; dx++) {
+        for (int dy = -config.sensor_size; dy <= config.sensor_size; dy++) {
+            sum += imageLoad(output_tex, pos + ivec2(dx, dy)).x;
+        }
+    }
+
+    return sum;
+}
+
+void main() {
+    uint index = gl_GlobalInvocationID.x;
+
+    if (index >= data.num_agents) {
+        return;
+    }
+
+    uvec2 size = uvec2(imageSize(output_tex));
+    Agent agent = data.agents[index];
+
+    vec4 random = randf(vec4(agent.pos / size, agent.angle / TAU, index / uint_MAXf));
+
+    // steering
+
+    float d_sensor_angle = config.sensor_angle / 360.0 * TAU;
+    float rand_steer = random.y;
+
+    float weight_fwd = sense(agent, 0);
+    float weight_l = sense(agent, d_sensor_angle);
+    float weight_r = sense(agent, -d_sensor_angle);
+
+    if (weight_fwd >= weight_l && weight_fwd >= weight_r) {
+    } else if (weight_fwd < weight_l && weight_fwd < weight_l) {
+        agent.angle += (rand_steer - 0.5) * 2 * config.turn_speed;
+    } else if (weight_r > weight_l) {
+        agent.angle -= rand_steer * config.turn_speed;
+    } else if (weight_l > weight_r) {
+        agent.angle += rand_steer * config.turn_speed;
+    }
+
+    agent.angle = mod(agent.angle, TAU);
+
+    // forward
+
+    float speed = config.speed / 60.0;  // 60 fps
+    vec2 dir = vec2(cos(agent.angle), sin(agent.angle));
+    agent.pos += dir * speed;
+
+    if ((agent.pos.x < 0 || agent.pos.x >= size.x) ||
+        (agent.pos.y < 0 || agent.pos.y >= size.y)) {
+        agent.pos = clamp(agent.pos, vec2(0), size - EPSILON);
+        agent.angle = random.x * TAU;
+    }
+
+    // output
+
+    imageStore(output_tex, ivec2(agent.pos + 0.5), vec4(1, 0, 0, 0));
+
+    data.agents[index] = agent;
+}

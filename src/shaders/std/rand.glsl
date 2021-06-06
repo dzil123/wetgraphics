@@ -9,8 +9,7 @@ uvec4 rand (uvecN v);
 #ifndef STD_RAND
 #define STD_RAND
 
-const uint uint_MAX = 4294967295u;  // (2 ** 32) - 1
-const float uint_MAXf = 4294967295.0;
+#include <consts.glsl>
 
 // http://www.jcgt.org/published/0009/03/02/
 uvec4 pcg4d(uvec4 v) {

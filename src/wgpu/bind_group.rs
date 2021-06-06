@@ -59,6 +59,7 @@ pub struct BindGroupResult {
     pub bind: BindGroup,
 }
 
+#[derive(Clone)]
 pub enum BindGroupEntry<'a> {
     Buffer {
         ty: BufferBindingType,
@@ -70,7 +71,7 @@ pub enum BindGroupEntry<'a> {
     Texture {
         // texture or storagetexture
         storage: Option<StorageTextureAccess>,
-        desc: TextureDescriptor<'static>,
+        desc: TextureDescriptor<'static>, // the actual dimensions of the texture are not used
         view: &'a TextureView,
     },
 }

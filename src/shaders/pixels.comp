@@ -2,7 +2,7 @@
 
 layout(local_size_x = 16, local_size_y = 16) in;
 
-layout(set = 0, binding = 0, r32f) restrict writeonly uniform image2D output_tex;
+layout(set = 0, binding = 0, r32f) restrict uniform image2D output_tex;
 
 layout(std430, push_constant) uniform PushConstants {
     uvec2 size;
@@ -30,5 +30,9 @@ void main() {
 
     uint index = uv.x + uv.y * pushc.size.x;
 
-    imageStore(output_tex, ivec2(uv), vec4(randf(uvf).x, 0, 0, 0));
+    float f;
+    f = randf(uvf).x;
+    // f = imageLoad(output_tex, ivec2(uv)).x - 0.01;
+
+    imageStore(output_tex, ivec2(uv), vec4(f, 0, 0, 0));
 }

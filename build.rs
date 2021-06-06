@@ -57,7 +57,7 @@ fn include_lygia(
 
     let path = match ty {
         IncludeType::Standard => {
-            assert!(source.is_relative()); // implicit prefix of ROOT
+            // assert!(source.is_relative()); // implicit prefix of ROOT // actually doesnt work for nested stdlib includes
 
             let root = if include.starts_with("lygia/") {
                 LYGIA_ROOT.parent().unwrap()
@@ -124,7 +124,7 @@ fn main() {
         let artifact = compiler.compile_into_spirv(
             &source,
             info.shader_type,
-            &info.filename,
+            &info.file.as_path().to_string_lossy(),
             "main",
             options,
         )?;

@@ -79,6 +79,13 @@ impl TextureDesc {
             y: self.height,
         }
     }
+
+    pub fn group_size(&self, a: u32) -> UVec2 {
+        UVec2 {
+            x: group_size(self.width, a),
+            y: group_size(self.height, a),
+        }
+    }
 }
 
 impl From<&SwapChainDescriptor> for TextureDesc {
@@ -237,5 +244,9 @@ pub fn as_bool<'a>(x: &'a mut u32) -> &'a mut bool {
 }
 
 pub fn align_to(x: u32, a: u32) -> u32 {
-    x - (x % a) + a
+    group_size(x, a) * a
+}
+
+pub fn group_size(x: u32, a: u32) -> u32 {
+    (x + a - 1) / a
 }
