@@ -250,3 +250,10 @@ pub fn align_to(x: u32, a: u32) -> u32 {
 pub fn group_size(x: u32, a: u32) -> u32 {
     (x + a - 1) / a
 }
+
+pub fn init_log() {
+    use std::env;
+
+    env::set_var("RUST_LOG", env::var("RUST_LOG").unwrap_or("warn".into()));
+    env_logger::init();
+}

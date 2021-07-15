@@ -17,6 +17,8 @@ imgui-wgpu = "0.15"
 imgui-winit-support = { version = "0.7", default-features = false, features = ["winit-25"] }
 phf = "0.8"
 pollster = "0.2"
+ron = "0.6"
+serde = "1.0"
 wgpu = "0.8"
 winit = { version = "0.25", default-features = false, features = ["x11"] }
 
